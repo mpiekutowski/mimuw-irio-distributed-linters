@@ -1,11 +1,13 @@
+import os
+import re
+
 from fastapi import FastAPI
 from pydantic import BaseModel
-
-import re
 
 app = FastAPI()
 
 request_count = 0
+language = os.getenv("LANGUAGE")
 version = "1.0"
 
 pattern = r"\S=|=\S"
@@ -27,4 +29,4 @@ async def lint(request: LintRequest):
 
 @app.get("/health")
 async def health():
-    return {"version": version, "requestCount": request_count}
+    return {"version": version, "language": language, "requestCount": request_count}
