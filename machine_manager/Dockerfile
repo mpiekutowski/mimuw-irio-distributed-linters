@@ -1,4 +1,10 @@
-FROM python:3.9
+FROM ubuntu:latest
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    docker.io
 
 WORKDIR /app
 
@@ -8,4 +14,4 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY src /app/src
 
-CMD ["python", "src/machine_manager.py"]
+CMD ["python3", "src/machine_manager.py"]
