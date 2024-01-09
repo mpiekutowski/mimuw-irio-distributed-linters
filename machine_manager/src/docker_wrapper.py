@@ -21,23 +21,26 @@ class DockerWrapper():
         self.client = docker.from_env()
 
     def create(self, image):
-        raw_container = self.client.containers.run(
-            image=f'{image.lang}:{image.version}',
-            ports={f'{image.app_port}/tcp': None},
-            environment=image.env,
-            detach=True
-        )
+        try:
+            raw_container = self.client.containers.run(
+                image=f'{image.lang}:{image.version}',
+                ports={f'{image.app_port}/tcp': None},
+                environment=image.env,
+                detach=True
+            )
 
-        # Needed to refresh attributes such as host port
-        # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.Container
-        raw_container.reload()
-        host_port = raw_container.attrs['NetworkSettings']['Ports'][f'{image.app_port}/tcp'][0]['HostPort']
+            # Needed to refresh attributes such as host port
+            # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.Container
+            raw_container.reload()
+            host_port = raw_container.attrs['NetworkSettings']['Ports'][f'{image.app_port}/tcp'][0]['HostPort']
 
-        return Container(raw_container.id, image.lang, image.version, int(host_port))
+            return Container(raw_container.id, image.lang, image.version, int(host_port))
+        except (docker.errors.ContainerError, docker.errors.ImageNotFound, docker.errors.APIError) as e:
+            raise DockerError(f'Could not create container: {e}')
 
     def remove(self, container, timeout):
-        self.client.containers.get(container.id).stop(timeout=timeout)
-        self.client.containers.get(container.id).remove()
-
-    def list(self):
-        pass
+        try:
+            self.client.containers.get(container.id).stop(timeout=timeout)
+            self.client.containers.get(container.id).remove()
+        except (docker.errors.NotFound, docker.errors.APIError) as e:
+            raise DockerError(f'Could not remove container: {e}')

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 from docker_wrapper import DockerWrapper, Image
 import json
 import argparse
@@ -17,7 +17,12 @@ versions = {
 @app.route('/create/<lang>')
 def create(lang):
     image = Image('linter', versions[lang], env={'LANGUAGE': lang})
-    container = docker.create(image)
+
+    try:
+        container = docker.create(image)
+    except DockerError:
+        return jsonify({"status": "error"}), 500
+
     containers.append(container)
 
     response = {
@@ -25,7 +30,7 @@ def create(lang):
         'id': f'127.0.0.1:{container.host_port}',
     }
 
-    return jsonify(response)
+    return jsonify(response), 200
 
 
 @app.route('/delete/<ip_port>')
@@ -33,17 +38,25 @@ def delete(ip_port):
     _, port = ip_port.split(':')
     port = int(port)
 
+    success = False
+    error_message = None
+
     for container in containers:
         if container.host_port == port:
-            docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
-            containers.remove(container)
-            break
+            try:
+                docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
+                success = True
+            except DockerError:
+                pass
+            finally:
+                containers.remove(container)
+                break
 
-    response = {
-        'status': 'ok',
-    }
+    # FIXME: Not sure if just the error code would be enough
+    if success:
+        return jsonify({"status": "ok"}), 200
 
-    return jsonify(response)
+    return jsonify({"status": "error"}), 500
 
 
 @app.route('/init-update')
