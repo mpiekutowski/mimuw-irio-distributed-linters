@@ -2,11 +2,13 @@ from flask import Flask, jsonify, Response
 from docker_wrapper import DockerWrapper, Image, DockerError
 import json
 import argparse
+import requests
 
 app = Flask(__name__)
 docker = DockerWrapper()
 
-containers = []
+containersInfo = [] # dict(container, is_ready, request_count, is_healthy)
+# TODO: update is_ready checking if created linter is up
 
 # FIXME: These are only temporary versions 
 versions = {
@@ -24,7 +26,7 @@ def create(lang):
     except DockerError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    containers.append(container)
+    containersInfo.append(dict(container=container, is_ready=False, request_count=0, is_healthy=True))
 
     response = {
         'status': 'ok',
@@ -43,15 +45,15 @@ def delete(ip_port):
     error_message = None
 
     # FIXME: What should happen if docker fails? Remove from containers list?
-    for container in containers:
-        if container.host_port == port:
+    for containerInfo in containersInfo:
+        if containerInfo["container"].host_port == port:
             found = True
             try:
-                docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
+                docker.remove(containerInfo["container"], timeout=app.config['STOP_TIMEOUT'])
             except DockerError as e:
                 error_message = str(e)
             finally:
-                containers.remove(container)
+                containersInfo.remove(containerInfo)
                 break
 
     if not found:
@@ -80,7 +82,18 @@ def rollback(lang):
 
 @app.route('/status')
 def status():
-    return f'/status'
+    lintersArray = []
+    for containerInfo in containersInfo:
+        linterDict = {}
+        linterDict[containerInfo["container"].id] = dict(
+            version=containerInfo["container"].version,
+            lang=containerInfo["container"].lang,
+            request_count=containerInfo["request_count"],
+            is_healthy=containerInfo["is_healthy"]
+        )
+        lintersArray.append(linterDict)
+
+    return jsonify(linters=lintersArray), 200
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
