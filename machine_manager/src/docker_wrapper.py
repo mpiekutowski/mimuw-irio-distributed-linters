@@ -33,10 +33,11 @@ class DockerWrapper():
         raw_container.reload()
         host_port = raw_container.attrs['NetworkSettings']['Ports'][f'{image.app_port}/tcp'][0]['HostPort']
 
-        return Container(raw_container.id, image.lang, image.version, host_port)
+        return Container(raw_container.id, image.lang, image.version, int(host_port))
 
-    def remove(self, container):
-        self.client.containers.get(container.id).remove(force=True)
+    def remove(self, container, timeout=30):
+        self.client.containers.get(container.id).stop(timeout=timeout)
+        self.client.containers.get(container.id).remove()
 
     def list(self):
         pass
