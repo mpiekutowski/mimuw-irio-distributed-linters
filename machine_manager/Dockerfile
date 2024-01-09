@@ -13,5 +13,6 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY src /app/src
+COPY config.json /app/config.json
 
-CMD ["python3", "src/machine_manager.py"]
+CMD ["python3", "src/machine_manager.py", "/app/config.json"]

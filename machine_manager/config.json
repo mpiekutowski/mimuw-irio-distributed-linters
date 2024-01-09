@@ -1,0 +1,73 @@
+{
+    "HOST_IP": "127.0.0.1",
+    "LOAD_BALANCER_IP": "127.0.0.1:8080",
+    "STOP_TIMEOUT": 10,
+    "UPDATE_STEPS": [
+        1, 5, 10, 50, 100
+    ],
+    "HEALTH_CHECK_INTERVAL": 5,
+    "IMAGES": {
+        "java": {
+            "1.0": {
+                "image": "linter:1.0",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "java"
+                }
+            },
+            "1.1": {
+                "image": "linter:1.1",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "java",
+                    "PROCESSING_TIME": 5
+                }
+            },
+            "1.2": {
+                "image": "linter:1.2",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "java"
+                }
+            },
+            "2.0": {
+                "image": "linter:2.0",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "java"
+                }
+            }
+        },
+        "python": {
+            "1.0": {
+                "image": "linter:1.0",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "python"
+                }
+            },
+            "1.1": {
+                "image": "linter:1.1",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "python",
+                    "PROCESSING_TIME": 5
+                }
+            },
+            "1.2": {
+                "image": "linter:1.2",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "python"
+                }
+            },
+            "2.0": {
+                "image": "linter:2.0",
+                "port": 80,
+                "env": {
+                    "LANGUAGE": "python"
+                }
+            }
+        }
+    }
+}

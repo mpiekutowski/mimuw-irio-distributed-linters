@@ -1,5 +1,7 @@
 from flask import Flask, jsonify
 from docker_wrapper import DockerWrapper, Image
+import json
+import argparse
 
 app = Flask(__name__)
 docker = DockerWrapper()
@@ -33,7 +35,7 @@ def delete(ip_port):
 
     for container in containers:
         if container.host_port == port:
-            docker.remove(container)
+            docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
             containers.remove(container)
             break
 
@@ -64,4 +66,14 @@ def status():
     return f'/status'
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config_path', type=str, help='Path to config file')
+    args = parser.parse_args()
+
+    if args.config_path:
+        app.config.from_file(args.config_path, load=json.load)
+    else:
+        print('No config file provided, exiting')
+        exit(1)
+
     app.run(host='0.0.0.0', port=5000)

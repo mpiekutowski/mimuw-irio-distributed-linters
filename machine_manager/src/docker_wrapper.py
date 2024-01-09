@@ -35,7 +35,7 @@ class DockerWrapper():
 
         return Container(raw_container.id, image.lang, image.version, int(host_port))
 
-    def remove(self, container, timeout=30):
+    def remove(self, container, timeout):
         self.client.containers.get(container.id).stop(timeout=timeout)
         self.client.containers.get(container.id).remove()
 
