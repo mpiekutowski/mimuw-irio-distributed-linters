@@ -1,6 +1,8 @@
 from flask import Flask
+from docker_wrapper import DockerWrapper
 
 app = Flask(__name__)
+docker = DockerWrapper()
 
 @app.route('/create/<lang>')
 def create(lang):
@@ -29,8 +31,7 @@ def rollback(lang):
 
 @app.route('/status')
 def status():
-    return '/status'
-
+    return docker.list()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY src /app/src
 
-CMD ["python", "src/machine-manager.py"]
+CMD ["python", "src/machine_manager.py"]
