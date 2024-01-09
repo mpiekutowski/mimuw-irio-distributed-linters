@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, Response
-from docker_wrapper import DockerWrapper, Image
+from docker_wrapper import DockerWrapper, Image, DockerError
 import json
 import argparse
 
@@ -14,14 +14,15 @@ versions = {
     'java': '2.0',
 }
 
+# FIXME: These endpoints should probably be POST
 @app.route('/create/<lang>')
 def create(lang):
     image = Image('linter', versions[lang], env={'LANGUAGE': lang})
 
     try:
         container = docker.create(image)
-    except DockerError:
-        return jsonify({"status": "error"}), 500
+    except DockerError as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
     containers.append(container)
 
@@ -38,25 +39,28 @@ def delete(ip_port):
     _, port = ip_port.split(':')
     port = int(port)
 
-    success = False
+    found = False
     error_message = None
 
+    # FIXME: What should happen if docker fails? Remove from containers list?
     for container in containers:
         if container.host_port == port:
+            found = True
             try:
                 docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
-                success = True
-            except DockerError:
-                pass
+            except DockerError as e:
+                error_message = str(e)
             finally:
                 containers.remove(container)
                 break
 
-    # FIXME: Not sure if just the error code would be enough
-    if success:
-        return jsonify({"status": "ok"}), 200
+    if not found:
+        return jsonify({"status": "error", "message": "Container not found"}), 500
 
-    return jsonify({"status": "error"}), 500
+    if error_message is not None:
+        return jsonify({"status": "error", "message": error_message}), 500
+
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route('/init-update')

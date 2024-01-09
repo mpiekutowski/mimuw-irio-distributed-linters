@@ -1,5 +1,9 @@
 import docker
 
+class DockerError(Exception):
+    def __init__(self, message="Docker operation failed"):
+        super().__init__(message)
+
 class Image():
     def __init__(self, lang, version, app_port=80, env=None):
         self.lang = lang
@@ -35,12 +39,18 @@ class DockerWrapper():
             host_port = raw_container.attrs['NetworkSettings']['Ports'][f'{image.app_port}/tcp'][0]['HostPort']
 
             return Container(raw_container.id, image.lang, image.version, int(host_port))
-        except (docker.errors.ContainerError, docker.errors.ImageNotFound, docker.errors.APIError) as e:
-            raise DockerError(f'Could not create container: {e}')
+        except docker.errors.ImageNotFound as e:
+            raise DockerError(f'Container image not found')
+        except docker.errors.APIError as e:
+            raise DockerError(f'Internal docker error')
+        except docker.errors.ContainerError as e:
+            raise DockerError(f'Container exited with non-zero code')
 
     def remove(self, container, timeout):
         try:
             self.client.containers.get(container.id).stop(timeout=timeout)
             self.client.containers.get(container.id).remove()
-        except (docker.errors.NotFound, docker.errors.APIError) as e:
-            raise DockerError(f'Could not remove container: {e}')
+        except docker.errors.NotFound as e:
+            raise DockerError(f'Could not find container')
+        except docker.errors.APIError as e:
+            raise DockerError(f'Internal docker error')
