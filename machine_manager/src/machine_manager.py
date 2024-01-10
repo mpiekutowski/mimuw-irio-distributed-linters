@@ -2,13 +2,13 @@ from flask import Flask, jsonify, Response
 from docker_wrapper import DockerWrapper, Image, DockerError
 import json
 import argparse
-import requests
 
 app = Flask(__name__)
 docker = DockerWrapper()
 
-containersInfo = [] # dict(container, is_ready, request_count, is_healthy)
-# TODO: update is_ready checking if created linter is up
+containers = []
+health_check_info = {} # dict(container_id, (request_count, is_healthy))
+# TODO: update checking if created linter is up
 
 # FIXME: These are only temporary versions 
 versions = {
@@ -26,7 +26,8 @@ def create(lang):
     except DockerError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    containersInfo.append(dict(container=container, is_ready=False, request_count=0, is_healthy=True))
+    containers.append(container)
+    health_check_info[container.id] = dict(request_count=0, is_healthy=True)
 
     response = {
         'status': 'ok',
@@ -45,15 +46,15 @@ def delete(ip_port):
     error_message = None
 
     # FIXME: What should happen if docker fails? Remove from containers list?
-    for containerInfo in containersInfo:
-        if containerInfo["container"].host_port == port:
+    for container in containers:
+        if container.host_port == port:
             found = True
             try:
-                docker.remove(containerInfo["container"], timeout=app.config['STOP_TIMEOUT'])
+                docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
             except DockerError as e:
                 error_message = str(e)
             finally:
-                containersInfo.remove(containerInfo)
+                containers.remove(container)
                 break
 
     if not found:
@@ -83,13 +84,14 @@ def rollback(lang):
 @app.route('/status')
 def status():
     lintersArray = []
-    for containerInfo in containersInfo:
+    for container in containers:
+        health_check_result = health_check_info.get(container.id)
         linterDict = {}
-        linterDict[containerInfo["container"].id] = dict(
-            version=containerInfo["container"].version,
-            lang=containerInfo["container"].lang,
-            request_count=containerInfo["request_count"],
-            is_healthy=containerInfo["is_healthy"]
+        linterDict[container.id] = dict(
+            version=container.version,
+            lang=container.lang,
+            request_count=health_check_result["request_count"],
+            is_healthy=health_check_result["is_healthy"]
         )
         lintersArray.append(linterDict)
 
