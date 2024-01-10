@@ -8,6 +8,7 @@ docker = DockerWrapper()
 
 containers = []
 health_check_info = {} # dict(container_id, (request_count, is_healthy))
+# FIXME: temporary structure, will be changed to be shared with health check worker
 # TODO: update checking if created linter is up
 
 # FIXME: These are only temporary versions 
