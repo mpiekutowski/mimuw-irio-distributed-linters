@@ -9,14 +9,14 @@
     "IMAGES": {
         "java": {
             "1.0": {
-                "image": "linter:1.0",
+                "name": "linter:1.0",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "java"
                 }
             },
             "1.1": {
-                "image": "linter:1.1",
+                "name": "linter:1.1",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "java",
@@ -24,14 +24,14 @@
                 }
             },
             "1.2": {
-                "image": "linter:1.2",
+                "name": "linter:1.2",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "java"
                 }
             },
             "2.0": {
-                "image": "linter:2.0",
+                "name": "linter:2.0",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "java"
@@ -40,14 +40,14 @@
         },
         "python": {
             "1.0": {
-                "image": "linter:1.0",
+                "name": "linter:1.0",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "python"
                 }
             },
             "1.1": {
-                "image": "linter:1.1",
+                "name": "linter:1.1",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "python",
@@ -55,14 +55,14 @@
                 }
             },
             "1.2": {
-                "image": "linter:1.2",
+                "name": "linter:1.2",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "python"
                 }
             },
             "2.0": {
-                "image": "linter:2.0",
+                "name": "linter:2.0",
                 "port": 80,
                 "env": {
                     "LANGUAGE": "python"

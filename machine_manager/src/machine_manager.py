@@ -18,6 +18,24 @@ versions = {
 }
 
 
+def get_image(lang, version):
+    with app.app_context():
+        images_for_lang = app.config['IMAGES'].get(lang)
+        if images_for_lang is None:
+            return None
+
+        image_params = images_for_lang.get(version)
+        if image_params is None:
+            return None
+
+        return Image(
+            image_params['name'],
+            version,
+            image_params['port'],
+            image_params['env'],
+        )        
+
+
 @app.route('/create', methods=['POST'])
 def create():
     request_data = request.get_json()
@@ -26,7 +44,10 @@ def create():
     if not lang:
         return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
 
-    image = Image('linter', versions[lang], env={'LANGUAGE': lang})
+    image = get_image(lang, versions[lang])
+
+    if image is None:
+        return jsonify({"status": "error", "message": "Invalid 'lang' parameter"}), 400
 
     try:
         container = docker.create(image)
