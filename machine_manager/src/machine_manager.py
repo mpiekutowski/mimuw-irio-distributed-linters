@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, Response
+from flask import Flask, jsonify, Response, request
 from docker_wrapper import DockerWrapper, Image, DockerError
 import json
 import argparse
@@ -17,10 +17,37 @@ versions = {
     'java': '2.0',
 }
 
-# FIXME: These endpoints should probably be POST
-@app.route('/create/<lang>')
-def create(lang):
-    image = Image('linter', versions[lang], env={'LANGUAGE': lang})
+
+def get_image(lang, version):
+    with app.app_context():
+        images_for_lang = app.config['IMAGES'].get(lang)
+        if images_for_lang is None:
+            return None
+
+        image_params = images_for_lang.get(version)
+        if image_params is None:
+            return None
+
+        return Image(
+            image_params['name'],
+            version,
+            image_params['port'],
+            image_params['env'],
+        )        
+
+
+@app.route('/create', methods=['POST'])
+def create():
+    request_data = request.get_json()
+    lang = request_data.get('lang')
+
+    if not lang:
+        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+
+    image = get_image(lang, versions[lang])
+
+    if image is None:
+        return jsonify({"status": "error", "message": "Invalid 'lang' parameter"}), 400
 
     try:
         container = docker.create(image)
@@ -38,8 +65,14 @@ def create(lang):
     return jsonify(response), 200
 
 
-@app.route('/delete/<ip_port>')
-def delete(ip_port):
+@app.route('/delete', methods=['POST'])
+def delete():
+    request_data = request.get_json()
+    ip_port = request_data.get('ip_port')
+
+    if not ip_port:
+        return jsonify({"status": "error", "message": "Missing 'ip_port' parameter"}), 400
+
     _, port = ip_port.split(':')
     port = int(port)
 
@@ -67,18 +100,30 @@ def delete(ip_port):
     return jsonify({"status": "ok"}), 200
 
 
-@app.route('/init-update')
+@app.route('/init-update', methods=['POST'])
 def init_update():
     return '/init-update'
 
 
-@app.route('/update/<lang>')
-def update(lang):
+@app.route('/update', methods=['POST'])
+def update():
+    request_data = request.get_json()
+    lang = request_data.get('lang')
+
+    if not lang:
+        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+
     return f'/update/{lang}'
 
 
-@app.route('/rollback/<lang>')
-def rollback(lang):
+@app.route('/rollback', methods=['POST'])
+def rollback():
+    request_data = request.get_json()
+    lang = request_data.get('lang')
+
+    if not lang:
+        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+
     return f'/rollback/{lang}'
 
 
