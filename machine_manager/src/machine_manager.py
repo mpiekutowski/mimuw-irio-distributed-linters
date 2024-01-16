@@ -7,6 +7,9 @@ app = Flask(__name__)
 docker = DockerWrapper()
 
 containers = []
+health_check_info = {} # dict(container_id, (request_count, is_healthy))
+# FIXME: temporary structure, will be changed to be shared with health check worker
+# TODO: update checking if created linter is up
 
 # FIXME: These are only temporary versions 
 versions = {
@@ -25,6 +28,7 @@ def create(lang):
         return jsonify({"status": "error", "message": str(e)}), 500
 
     containers.append(container)
+    health_check_info[container.id] = dict(request_count=0, is_healthy=True)
 
     response = {
         'status': 'ok',
@@ -80,7 +84,19 @@ def rollback(lang):
 
 @app.route('/status')
 def status():
-    return f'/status'
+    lintersArray = []
+    for container in containers:
+        health_check_result = health_check_info.get(container.id)
+        linterDict = {}
+        linterDict[container.id] = dict(
+            version=container.version,
+            lang=container.lang,
+            request_count=health_check_result["request_count"],
+            is_healthy=health_check_result["is_healthy"]
+        )
+        lintersArray.append(linterDict)
+
+    return jsonify(linters=lintersArray), 200
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

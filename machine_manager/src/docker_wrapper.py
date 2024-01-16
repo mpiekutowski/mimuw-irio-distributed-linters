@@ -5,8 +5,8 @@ class DockerError(Exception):
         super().__init__(message)
 
 class Image():
-    def __init__(self, lang, version, app_port=80, env=None):
-        self.lang = lang
+    def __init__(self, name, version, app_port=80, env=None):
+        self.name = name
         self.version = version
         self.app_port = app_port
         self.env = env
@@ -27,7 +27,7 @@ class DockerWrapper():
     def create(self, image):
         try:
             raw_container = self.client.containers.run(
-                image=f'{image.lang}:{image.version}',
+                image=f'{image.name}:{image.version}',
                 ports={f'{image.app_port}/tcp': None},
                 environment=image.env,
                 detach=True
@@ -38,7 +38,7 @@ class DockerWrapper():
             raw_container.reload()
             host_port = raw_container.attrs['NetworkSettings']['Ports'][f'{image.app_port}/tcp'][0]['HostPort']
 
-            return Container(raw_container.id, image.lang, image.version, int(host_port))
+            return Container(raw_container.id, image.env["LANGUAGE"], image.version, int(host_port))
         except docker.errors.ImageNotFound as e:
             raise DockerError(f'Container image not found')
         except docker.errors.APIError as e:
