@@ -2,10 +2,13 @@ from flask import Flask, jsonify, request
 from docker_wrapper import DockerError
 import json
 import argparse
+import sys
+import signal
 from typing import Optional
 from image_store import ImageStore
 
 from machine_manager import MachineManager, Config
+from health_check import HealthCheck, finish_health_check
 
 app = Flask(__name__)
 
@@ -140,4 +143,14 @@ if __name__ == '__main__':
         update_steps=app.config['UPDATE_STEPS'],
         config=Config(timeout=app.config['STOP_TIMEOUT']) # Yes, this is ugly, will fix later
         )
+    
+    health_check_thread = HealthCheck(args=(machine_manager.health_check_info, machine_manager.health_check_mutex))
+    health_check_thread.start()
+
+    def handler(signal, frame):
+        finish_health_check(health_check_thread)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, handler)
+
     app.run(host='0.0.0.0', port=5000)

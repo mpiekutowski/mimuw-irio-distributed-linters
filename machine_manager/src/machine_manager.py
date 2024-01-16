@@ -3,6 +3,7 @@ from image_store import ImageStore
 from version_tracker import VersionTracker, Readjustment
 from typing import List
 from dataclasses import dataclass
+from threading import Lock
 
 @dataclass
 class Linter:
@@ -23,6 +24,7 @@ class MachineManager:
         self.linters = []
         # FIXME: temporary structure, will be changed to be shared with health check worker
         self.health_check_info = {} # dict(container_id, (request_count, is_healthy))
+        self.health_check_mutex = Lock()
         self.config = config
 
         for lang in image_store.get_languages():
@@ -39,7 +41,8 @@ class MachineManager:
         
         linter = Linter(lang=lang, version=version, host_port=container.host_port, container=container)
         self.linters.append(linter)
-        self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
+        with self.health_check_mutex:
+            self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
         readjustment = self.version_trackers[lang].add(version)
 
         return linter, readjustment
@@ -53,7 +56,8 @@ class MachineManager:
             raise RuntimeError(e)
         
         self.linters.remove(linter)
-        self.health_check_info.pop(container_id)
+        with self.health_check_mutex:
+            self.health_check_info.pop(container_id)
         readjustment = self.version_trackers[linter.lang].remove(linter.version)
 
         return readjustment
@@ -153,7 +157,12 @@ class MachineManager:
     def status(self):
         lintersArray = []
         for linter in self.linters:
-            health_check_result = self.health_check_info.get(linter.container.id)
+            with self.health_check_mutex:
+                health_check_result = self.health_check_info.get(linter.container.id)
+
+            if health_check_result is None:
+                continue
+            
             linterDict = {}
             linterDict[linter.container.id] = dict(
                 version=linter.version,
