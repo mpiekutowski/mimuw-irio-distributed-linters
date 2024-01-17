@@ -4,6 +4,7 @@ import json
 import argparse
 from typing import List
 from dataclasses import dataclass
+from image_store import ImageStore
 
 app = Flask(__name__)
 docker = DockerWrapper()
@@ -16,6 +17,10 @@ class Linter:
     container: Container 
 
 linters: List[Linter] = []
+
+# Assign None to make it global
+image_store = None
+
 health_check_info = {} # dict(container_id, (request_count, is_healthy))
 # FIXME: temporary structure, will be changed to be shared with health check worker
 # TODO: update checking if created linter is up
@@ -24,25 +29,7 @@ health_check_info = {} # dict(container_id, (request_count, is_healthy))
 versions = {
     'python': '1.0',
     'java': '2.0',
-}
-
-
-def get_image(lang, version):
-    with app.app_context():
-        images_for_lang = app.config['IMAGES'].get(lang)
-        if images_for_lang is None:
-            return None
-
-        image_params = images_for_lang.get(version)
-        if image_params is None:
-            return None
-
-        return Image(
-            image_params['name'],
-            image_params['port'],
-            image_params['env'],
-        )        
-
+}       
 
 @app.route('/create', methods=['POST'])
 def create():
@@ -52,7 +39,7 @@ def create():
     if not lang:
         return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
 
-    image = get_image(lang, versions[lang])
+    image = image_store.get_image(lang, versions[lang])
 
     if image is None:
         return jsonify({"status": "error", "message": "Invalid 'lang' parameter"}), 400
@@ -154,12 +141,19 @@ def status():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('config_path', type=str, help='Path to config file')
+    parser.add_argument('linters_path', type=str, help='Path to file with linter definitions')
     args = parser.parse_args()
 
     if args.config_path:
         app.config.from_file(args.config_path, load=json.load)
     else:
         print('No config file provided, exiting')
+        exit(1)
+
+    if args.linters_path:
+        image_store = ImageStore.from_json_file(args.linters_path)
+    else:
+        print('No linters file provided, exiting')
         exit(1)
 
     app.run(host='0.0.0.0', port=5000)
