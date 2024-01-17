@@ -18,8 +18,8 @@ object Main extends IOApp.Simple {
   override def run: IO[Unit] =
     for {
       config <- IO(ConfigSource.default.loadOrThrow[Config])
-      backendUrls = Uris(Vector())
-      backends    <- IO.ref(backendUrls)
+      backendUris = Uris(Vector())
+      backends    <- IO.ref(backendUris)
       hostAndPort <- IO.fromEither(hostAndPort(config.host, config.port))
       (host, port) = hostAndPort
       _ <- info"Starting server on $host:$port"
