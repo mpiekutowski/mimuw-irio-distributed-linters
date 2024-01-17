@@ -178,6 +178,8 @@ class TestStartUpdate:
         readjustment = tracker.start_update()
         assert readjustment == Readjustment(from_version="v1", to_version="v2", count=5)
 
+    # QUESTION: Do we need fractional update steps?
+    # The code should handle them, but is it a good idea to use them?
     def test_start_update_floats(self):
         tracker = VersionTracker(versions=["v1", "v2"], update_steps=[0.1, 100])
 
