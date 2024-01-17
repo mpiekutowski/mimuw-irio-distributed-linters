@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, Response, request
-from docker_wrapper import DockerWrapper, Image, DockerError
+from docker_wrapper import DockerWrapper, Image, DockerError, Container
 import json
 import argparse
 
@@ -30,7 +30,6 @@ def get_image(lang, version):
 
         return Image(
             image_params['name'],
-            version,
             image_params['port'],
             image_params['env'],
         )        
