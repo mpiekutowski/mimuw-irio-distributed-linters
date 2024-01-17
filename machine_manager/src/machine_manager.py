@@ -2,9 +2,10 @@ from flask import Flask, jsonify, Response, request
 from docker_wrapper import DockerWrapper, Image, DockerError, Container
 import json
 import argparse
-from typing import List
+from typing import List, Dict
 from dataclasses import dataclass
 from image_store import ImageStore
+from version_tracker import VersionTracker
 
 app = Flask(__name__)
 docker = DockerWrapper()
@@ -20,16 +21,11 @@ linters: List[Linter] = []
 
 # Assign None to make it global
 image_store = None
+version_trackers: Dict[str, VersionTracker] = {}
 
 health_check_info = {} # dict(container_id, (request_count, is_healthy))
 # FIXME: temporary structure, will be changed to be shared with health check worker
-# TODO: update checking if created linter is up
-
-# FIXME: These are only temporary versions 
-versions = {
-    'python': '1.0',
-    'java': '2.0',
-}       
+# TODO: update checking if created linter is up  
 
 @app.route('/create', methods=['POST'])
 def create():
@@ -39,7 +35,8 @@ def create():
     if not lang:
         return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
 
-    image = image_store.get_image(lang, versions[lang])
+    version = version_trackers[lang].determine_version()
+    image = image_store.get_image(lang, version)
 
     if image is None:
         return jsonify({"status": "error", "message": "Invalid 'lang' parameter"}), 400
@@ -49,8 +46,9 @@ def create():
     except DockerError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    linters.append(Linter(lang=lang, version=versions[lang], host_port=container.host_port, container=container))
+    linters.append(Linter(lang=lang, version=version, host_port=container.host_port, container=container))
     health_check_info[container.id] = dict(request_count=0, is_healthy=True)
+    version_trackers[lang].add(version)
 
     response = {
         'status': 'ok',
@@ -84,6 +82,7 @@ def delete():
                 error_message = str(e)
             finally:
                 linters.remove(linter)
+                version_trackers[linter.lang].remove(linter.version)
                 break
 
     if not found:
@@ -155,5 +154,11 @@ if __name__ == '__main__':
     else:
         print('No linters file provided, exiting')
         exit(1)
+
+    for lang in image_store.get_languages():
+        version_trackers[lang] = VersionTracker(
+            versions=image_store.get_versions(lang), 
+            update_steps=app.config['UPDATE_STEPS']
+        )
 
     app.run(host='0.0.0.0', port=5000)

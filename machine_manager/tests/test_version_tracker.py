@@ -94,6 +94,15 @@ class TestAdd:
 
         assert readjustment is not None
 
+    def test_add_remove_no_readjustment(self):
+        tracker = VersionTracker(versions=["v1", "v2"], update_steps=[50, 100])
+
+        version = tracker.determine_version()
+        assert version == "v1"
+        assert tracker.add(version) is None
+
+        assert tracker.remove(version) is None
+
 
 class TestRemove:
     def test_remove_with_zero_current_version(self):
