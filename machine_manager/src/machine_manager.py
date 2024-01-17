@@ -2,11 +2,20 @@ from flask import Flask, jsonify, Response, request
 from docker_wrapper import DockerWrapper, Image, DockerError, Container
 import json
 import argparse
+from typing import List
+from dataclasses import dataclass
 
 app = Flask(__name__)
 docker = DockerWrapper()
 
-containers = []
+@dataclass
+class Linter:
+    lang: str
+    version: str
+    host_port: int
+    container: Container 
+
+linters: List[Linter] = []
 health_check_info = {} # dict(container_id, (request_count, is_healthy))
 # FIXME: temporary structure, will be changed to be shared with health check worker
 # TODO: update checking if created linter is up
@@ -53,7 +62,7 @@ def create():
     except DockerError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    containers.append(container)
+    linters.append(Linter(lang=lang, version=versions[lang], host_port=container.host_port, container=container))
     health_check_info[container.id] = dict(request_count=0, is_healthy=True)
 
     response = {
@@ -79,15 +88,15 @@ def delete():
     error_message = None
 
     # FIXME: What should happen if docker fails? Remove from containers list?
-    for container in containers:
-        if container.host_port == port:
+    for linter in linters:
+        if linter.host_port == port:
             found = True
             try:
-                docker.remove(container, timeout=app.config['STOP_TIMEOUT'])
+                docker.remove(linter.container, timeout=app.config['STOP_TIMEOUT'])
             except DockerError as e:
                 error_message = str(e)
             finally:
-                containers.remove(container)
+                linters.remove(linter)
                 break
 
     if not found:
@@ -129,12 +138,12 @@ def rollback():
 @app.route('/status')
 def status():
     lintersArray = []
-    for container in containers:
-        health_check_result = health_check_info.get(container.id)
+    for linter in linters:
+        health_check_result = health_check_info.get(linter.container.id)
         linterDict = {}
-        linterDict[container.id] = dict(
-            version=container.version,
-            lang=container.lang,
+        linterDict[linter.container.id] = dict(
+            version=linter.version,
+            lang=linter.lang,
             request_count=health_check_result["request_count"],
             is_healthy=health_check_result["is_healthy"]
         )
