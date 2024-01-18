@@ -1,7 +1,7 @@
 import pytest
 from math import ceil
 
-from src.version_tracker import VersionTracker, Readjustment
+from src.version_tracker import VersionTracker, Readjustment, UpdateStatus
 
 
 def do_readjustment(tracker, readjustment):
@@ -109,7 +109,7 @@ class TestRemove:
 
     def test_remove_with_invalid_version(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
-        
+
         first_version = tracker.determine_version()
         assert first_version == "v1"
         tracker.add(first_version)
@@ -196,6 +196,31 @@ class TestStartUpdate:
         readjustment = tracker.start_update("v2")
         assert readjustment == Readjustment(from_version="v1", to_version="v2", count=1)
 
+    def test_multiple_start_update(self):
+        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
+
+        for _ in range(2):
+            first_version = tracker.determine_version()
+            assert first_version == "v1"
+            tracker.add(first_version)
+
+        readjustment = tracker.start_update("v2")
+        assert readjustment == Readjustment(from_version="v1", to_version="v2", count=1)
+        do_readjustment(tracker, readjustment)
+
+        readjustment = tracker.move_to_next_step()
+        assert readjustment == Readjustment(from_version="v1", to_version="v2", count=1)
+        do_readjustment(tracker, readjustment)
+        tracker.finish_update()
+
+        readjustment = tracker.start_update("v3")
+        assert readjustment == Readjustment(from_version="v2", to_version="v3", count=1)
+        do_readjustment(tracker, readjustment)
+
+        readjustment = tracker.move_to_next_step()
+        assert readjustment == Readjustment(from_version="v2", to_version="v3", count=1)
+        tracker.finish_update()
+
 
 class TestMoveToNextStep:
     def test_move_to_next_step_without_start_update(self):
@@ -204,15 +229,15 @@ class TestMoveToNextStep:
             tracker.move_to_next_step()
 
     def test_move_to_next_step_on_last_step(self):
-        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
+        tracker = VersionTracker(initial_version="v1", update_steps=[100])
         tracker.start_update("v2")
 
         first_version = tracker.determine_version()
         assert first_version == "v2"
         tracker.add(first_version)
 
-        tracker.move_to_next_step()
-        assert tracker.is_updating() == (False, "v2", None)
+        with pytest.raises(ValueError):
+            tracker.move_to_next_step()
 
     def test_move_to_next_step_no_readjustment(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[10, 50, 100])
@@ -311,30 +336,58 @@ class TestMoveToPreviousStep:
         readjustment = tracker.start_update("v2")
         do_readjustment(tracker, readjustment)
 
-        for _ in [1, 10, 50]:
+        for _ in [1, 10, 50, 100]:
             readjustment = tracker.move_to_next_step()
             do_readjustment(tracker, readjustment)
 
-        # There should be 6 v2s at the moment
+        # There should be 11 v2s at the moment
 
-        for step in [10, 1, 0.1]:
+        for step in [50, 10, 1, 0.1]:
             readjustment = tracker.move_to_previous_step()
 
             assert readjustment == Readjustment(
-                from_version="v2", to_version="v1", count=6 - ceil(11 * step / 100.0)
+                from_version="v2", to_version="v1", count=11 - ceil(11 * step / 100.0)
             )
 
-class TestIsUpdating:
-    def test_is_updating_without_start_update(self):
-        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
-        assert tracker.is_updating() == (False, "v1", None)
 
-    def test_is_updating_with_start_update(self):
+class TestFinishUpdate:
+    def test_finish_update_with_no_update(self):
+        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
+        with pytest.raises(ValueError):
+            tracker.finish_update()
+
+    def test_finish_update_on_partial_update(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
         tracker.start_update("v2")
-        assert tracker.is_updating() == (True, "v1", "v2")
-            
-    def test_is_updating_with_single_step(self):
-        tracker = VersionTracker(initial_version="v1", update_steps=[100])
+        with pytest.raises(ValueError):
+            tracker.finish_update()
+
+    def test_finish_update_on_full_update(self):
+        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
         tracker.start_update("v2")
-        assert tracker.is_updating() == (False, "v2", None)
+
+        first_version = tracker.determine_version()
+        assert first_version == "v2"
+        tracker.add(first_version)
+        tracker.move_to_next_step()
+
+        tracker.finish_update()
+        assert tracker.update_status() == UpdateStatus(
+            is_updating=False, current_version="v2", next_version=None, progress=None
+        )
+
+
+class TestUpdateStatus:
+    def test_update_status_without_update(self):
+        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
+        assert tracker.update_status() == UpdateStatus(
+            is_updating=False, current_version="v1", next_version=None, progress=None
+        )
+
+    def test_update_status_with_update(self):
+        tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
+        tracker.start_update("v2")
+
+        assert tracker.update_status() == UpdateStatus(
+            is_updating=True, current_version="v1", next_version="v2", progress=50
+        )
