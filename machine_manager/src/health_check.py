@@ -20,8 +20,6 @@ class HealthCheck(Thread):
             self.health_check_loop(health_check_info, health_check_mutex)
             time.sleep(5)
             
-        print("ENDED!")
-
     def health_check_loop(self, health_check_info, health_check_mutex):
         with health_check_mutex:
             health_check_items = health_check_info.items()
@@ -30,6 +28,8 @@ class HealthCheck(Thread):
             linter_url = f"http://{linter_id}/health"
             response = requests.get(linter_url)
             print(linter_url, file=sys.stderr)
+
+            response = requests.get(linter_url)
             
             if response.status_code == 200:
                 print("Working")
@@ -45,5 +45,3 @@ class HealthCheck(Thread):
 def finish_health_check(health_check_thread):
     health_check_thread.stop()
     health_check_thread.join()
-
-

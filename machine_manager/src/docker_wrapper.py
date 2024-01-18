@@ -1,7 +1,6 @@
 import docker
 from dataclasses import dataclass
 
-
 class DockerError(Exception):
     def __init__(self, message="Docker operation failed"):
         super().__init__(message)
@@ -24,6 +23,13 @@ class DockerWrapper:
     def __init__(self):
         self.client = docker.from_env()
 
+        self.network_name = "linters_network"
+        try:
+            self.network = self.client.networks.get(self.network_name)
+        except docker.errors.NotFound:
+            self.network = self.client.networks.create(self.network_name, internal=True)
+            print(f"Network '{self.network_name}' not found.")
+
     def create(self, image: Image):
         try:
             raw_container = self.client.containers.run(
@@ -33,14 +39,16 @@ class DockerWrapper:
                 },
                 environment=image.env,
                 detach=True,
+                network=self.network_name
             )
 
             # Reload is needed to get access to attributes like host port
             # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.Container
             raw_container.reload()
-            host_port = raw_container.attrs["NetworkSettings"]["Ports"][f"{image.app_port}/tcp"][0]["HostPort"]
+            # host_port = raw_container.attrs["NetworkSettings"]["Ports"][f"{image.app_port}/tcp"][0]["HostPort"]
 
-            return Container(id=raw_container.id, host_port=int(host_port))
+            # FIXME: temporary, until issues with network are not resolved
+            return Container(id=raw_container.id, host_port=int(1))
         except docker.errors.ImageNotFound:
             raise DockerError(f"Container image not found")
         except docker.errors.APIError:
