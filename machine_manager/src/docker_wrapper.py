@@ -16,39 +16,36 @@ class Image:
 @dataclass
 class Container:
     id: str
-    host_port: int
+    address: str
 
 
 class DockerWrapper:
     def __init__(self):
         self.client = docker.from_env()
+        # TODO: SHoudln't be hardcoded
+        network_name = "linter_network"
 
-        self.network_name = "linters_network"
         try:
-            self.network = self.client.networks.get(self.network_name)
+            self.network = self.client.networks.get(network_name)
         except docker.errors.NotFound:
-            self.network = self.client.networks.create(self.network_name, internal=True)
-            print(f"Network '{self.network_name}' not found.")
+            raise DockerError(f"Network {network_name} not found")
 
     def create(self, image: Image):
         try:
             raw_container = self.client.containers.run(
                 image=image.name,
-                ports={
-                    f"{image.app_port}/tcp": None # None means assign random free port on host
-                },
                 environment=image.env,
+                network=self.network.name,
                 detach=True,
-                network=self.network_name
             )
 
-            # Reload is needed to get access to attributes like host port
+            # Reload is needed to get access to attributes like network addresses
             # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.Container
             raw_container.reload()
-            # host_port = raw_container.attrs["NetworkSettings"]["Ports"][f"{image.app_port}/tcp"][0]["HostPort"]
+            address = raw_container.attrs["NetworkSettings"]["Networks"][self.network.name]["IPAddress"]
+            address += ':' + str(image.app_port)
 
-            # FIXME: temporary, until issues with network are not resolved
-            return Container(id=raw_container.id, host_port=int(1))
+            return Container(id=raw_container.id, address=address)
         except docker.errors.ImageNotFound:
             raise DockerError(f"Container image not found")
         except docker.errors.APIError:

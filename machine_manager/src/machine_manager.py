@@ -9,7 +9,6 @@ from threading import Lock
 class Linter:
     lang: str
     version: str
-    host_port: int
     container: Container
 
 @dataclass
@@ -39,7 +38,7 @@ class MachineManager:
         except DockerError as e:
             raise RuntimeError(e)
         
-        linter = Linter(lang=lang, version=version, host_port=container.host_port, container=container)
+        linter = Linter(lang=lang, version=version, container=container)
         self.linters.append(linter)
         with self.health_check_mutex:
             self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
@@ -104,20 +103,16 @@ class MachineManager:
 
         return linter
     
-    # TODO: move to full address instead of just port
-    def delete_linter(self, ip_port: str):
-        _, port = ip_port.split(':')
-        host_port = int(port)
-
+    def delete_linter(self, address: str):
         target_linter = None
 
         for linter in self.linters:
-            if linter.host_port == host_port:
+            if linter.container.address == address:
                 target_linter = linter
                 break
 
         if target_linter is None:
-            raise ValueError(f'No linter with host_port: {host_port}')
+            raise ValueError(f'No linter with address: {address}')
         
         readjustment = self._remove_linter(target_linter)
 

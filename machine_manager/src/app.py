@@ -31,7 +31,7 @@ def create():
 
     response = {
         'status': 'ok',
-        'id': f'127.0.0.1:{linter.host_port}',
+        'ip': linter.container.address,
     }
 
     return jsonify(response), 200
@@ -40,13 +40,13 @@ def create():
 @app.route('/delete', methods=['POST'])
 def delete():
     request_data = request.get_json()
-    ip_port = request_data.get('ip_port')
+    address = request_data.get('ip')
 
-    if not ip_port:
-        return jsonify({"status": "error", "message": "Missing 'ip_port' parameter"}), 400
+    if not address:
+        return jsonify({"status": "error", "message": "Missing 'ip' parameter"}), 400
 
     try:
-        machine_manager.delete_linter(ip_port)
+        machine_manager.delete_linter(address)
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     except RuntimeError as e:
