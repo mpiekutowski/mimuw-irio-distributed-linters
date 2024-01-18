@@ -8,21 +8,24 @@ class Readjustment():
     to_version: str
     count: int
 
+@dataclass
+class UpdateStatus():
+    is_updating: bool
+    current_version: str
+    next_version: Optional[str]
+    progress: Optional[float]
+
 class VersionTracker():
-    def __init__(self, versions: List[str], update_steps: List[float]):
-        if len(versions) == 0:
-            raise ValueError('At least one version is required')
-        
+    def __init__(self, initial_version: str, update_steps: List[float]):
         if len(update_steps) == 0:
             raise ValueError('At least one update step is required')
         
         if update_steps[-1] != 100:
             raise ValueError('Last update step must be 100')
 
-        self._versions: List[str] = versions
         self._update_steps: List[int] = update_steps
             
-        self._current_version: str = self._versions[0]
+        self._current_version: str = initial_version
         self._is_updating: bool = False
         self._count: int = 0
         self._current_version_count: int = 0
@@ -117,21 +120,16 @@ class VersionTracker():
         return self._calculate_readjustment()
 
 
-    def start_update(self) -> Optional[Readjustment]:
+    def start_update(self, version: str) -> Optional[Readjustment]:
         if self._is_updating:
             raise ValueError('Cannot start update, already updating')
         
-        current_version_index = self._versions.index(self._current_version)
-        if current_version_index + 1 == len(self._versions):
-            raise ValueError('Cannot start update, already at latest version')
-        
         self._is_updating = True
         self._update_step_index = 0
-        self._next_version = self._versions[current_version_index + 1]
+        self._next_version = version
         self._next_version_count = 0
 
         return self._calculate_readjustment()
-
 
     def move_to_next_step(self) -> Optional[Readjustment]:
         if not self._is_updating:
@@ -157,13 +155,27 @@ class VersionTracker():
 
         return self._calculate_readjustment()
 
-
-    def finish_update(self) -> None:
+    def finish_update(self):
         if not self._is_updating:
             raise ValueError('Cannot finish update, not updating')
         
+        if self._update_step_index + 1 != len(self._update_steps):
+            raise ValueError('Cannot finish update, not at last step')
+        
         self._is_updating = False
         self._current_version = self._next_version
+        self._current_version_count = self._next_version_count
         self._next_version = None
         self._update_step_index = None
         self._next_version_count = None
+
+
+    def update_status(self) -> UpdateStatus:
+        return UpdateStatus(
+            is_updating=self._is_updating,
+            current_version=self._current_version,
+            next_version=self._next_version,
+            progress=self._update_steps[self._update_step_index] if self._is_updating else None
+        )
+    
+    

@@ -1,164 +1,166 @@
-from flask import Flask, jsonify, Response, request
 from docker_wrapper import DockerWrapper, Image, DockerError, Container
-import json
-import argparse
-from typing import List, Dict
-from dataclasses import dataclass
 from image_store import ImageStore
-from version_tracker import VersionTracker
-
-app = Flask(__name__)
-docker = DockerWrapper()
+from version_tracker import VersionTracker, Readjustment
+from typing import List
+from dataclasses import dataclass
 
 @dataclass
 class Linter:
     lang: str
     version: str
     host_port: int
-    container: Container 
+    container: Container
 
-linters: List[Linter] = []
+@dataclass
+class Config:
+    timeout: int
 
-# Assign None to make it global
-image_store = None
-version_trackers: Dict[str, VersionTracker] = {}
+class MachineManager:
+    def __init__(self, image_store: ImageStore, update_steps: List[float], config: Config):
+        self.image_store = image_store
+        self.docker = DockerWrapper()
+        self.version_trackers = {}
+        self.linters = []
+        # FIXME: temporary structure, will be changed to be shared with health check worker
+        self.health_check_info = {} # dict(container_id, (request_count, is_healthy))
+        self.config = config
 
-health_check_info = {} # dict(container_id, (request_count, is_healthy))
-# FIXME: temporary structure, will be changed to be shared with health check worker
-# TODO: update checking if created linter is up  
+        for lang in image_store.get_languages():
+            self.version_trackers[lang] = VersionTracker(
+                initial_version="1.0", 
+                update_steps=update_steps
+            )
 
-@app.route('/create', methods=['POST'])
-def create():
-    request_data = request.get_json()
-    lang = request_data.get('lang')
+    def _create_linter(self, lang: str, version: str, image: Image) -> (Linter, Readjustment):
+        try:
+            container = self.docker.create(image)
+        except DockerError as e:
+            raise RuntimeError(e)
+        
+        linter = Linter(lang=lang, version=version, host_port=container.host_port, container=container)
+        self.linters.append(linter)
+        self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
+        readjustment = self.version_trackers[lang].add(version)
 
-    if not lang:
-        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+        return linter, readjustment
+    
+    def _remove_linter(self, linter: Linter) -> Readjustment:
+        container_id = linter.container.id
 
-    version = version_trackers[lang].determine_version()
-    image = image_store.get_image(lang, version)
+        try:
+            self.docker.remove(linter.container, timeout=self.config.timeout)
+        except DockerError as e:
+            raise RuntimeError(e)
+        
+        self.linters.remove(linter)
+        self.health_check_info.pop(container_id)
+        readjustment = self.version_trackers[linter.lang].remove(linter.version)
 
-    if image is None:
-        return jsonify({"status": "error", "message": "Invalid 'lang' parameter"}), 400
+        return readjustment
+    
+    def _replace_containers(self, lang: str, readjustment: Readjustment):
+        if readjustment is None:
+            return
 
-    try:
-        container = docker.create(image)
-    except DockerError as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        from_version = readjustment.from_version
+        to_version = readjustment.to_version
+        count = readjustment.count
 
-    linters.append(Linter(lang=lang, version=version, host_port=container.host_port, container=container))
-    health_check_info[container.id] = dict(request_count=0, is_healthy=True)
-    version_trackers[lang].add(version)
+        for linter in self.linters:
+            if linter.lang == lang and linter.version == from_version:
+                self._remove_linter(linter)
+                self._create_linter(lang, to_version, self.image_store.get_image(lang, to_version))
+                count -= 1
 
-    response = {
-        'status': 'ok',
-        'id': f'127.0.0.1:{container.host_port}',
-    }
-
-    return jsonify(response), 200
-
-
-@app.route('/delete', methods=['POST'])
-def delete():
-    request_data = request.get_json()
-    ip_port = request_data.get('ip_port')
-
-    if not ip_port:
-        return jsonify({"status": "error", "message": "Missing 'ip_port' parameter"}), 400
-
-    _, port = ip_port.split(':')
-    port = int(port)
-
-    found = False
-    error_message = None
-
-    # FIXME: What should happen if docker fails? Remove from containers list?
-    for linter in linters:
-        if linter.host_port == port:
-            found = True
-            try:
-                docker.remove(linter.container, timeout=app.config['STOP_TIMEOUT'])
-            except DockerError as e:
-                error_message = str(e)
-            finally:
-                linters.remove(linter)
-                version_trackers[linter.lang].remove(linter.version)
+            if count == 0:
                 break
 
-    if not found:
-        return jsonify({"status": "error", "message": "Container not found"}), 500
+        if count != 0:
+            raise RuntimeError(f'Internal error: readjustment count mismatch: {count}')
 
-    if error_message is not None:
-        return jsonify({"status": "error", "message": error_message}), 500
+    def create_linter(self, lang: str) -> Linter:
+        if lang not in self.version_trackers.keys():
+            raise ValueError(f'Unsupported lang: {lang}')
+        
+        version = self.version_trackers[lang].determine_version()
+        image = self.image_store.get_image(lang, version)
 
-    return jsonify({"status": "ok"}), 200
+        if image is None:
+            # This should never happen, as versions in image store and version tracker are the same
+            # Some kind of internal error
+            raise RuntimeError(f'Internal error: no image for lang: {lang}, version: {version}')
+        
+        linter, readjustment = self._create_linter(lang, version, image)
+        
+        if readjustment is not None:
+            # VersionTracker guarantees that adding a container with version
+            # determined by it will not cause any readjustment
+            # So this should never happen too
+            raise RuntimeError(f'Internal error: readjustment needed for lang: {lang}, version: {version}')
 
+        return linter
+    
+    # TODO: move to full address instead of just port
+    def delete_linter(self, ip_port: str):
+        _, port = ip_port.split(':')
+        host_port = int(port)
 
-@app.route('/init-update', methods=['POST'])
-def init_update():
-    return '/init-update'
+        target_linter = None
 
+        for linter in self.linters:
+            if linter.host_port == host_port:
+                target_linter = linter
+                break
 
-@app.route('/update', methods=['POST'])
-def update():
-    request_data = request.get_json()
-    lang = request_data.get('lang')
+        if target_linter is None:
+            raise ValueError(f'No linter with host_port: {host_port}')
+        
+        readjustment = self._remove_linter(target_linter)
 
-    if not lang:
-        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+        if readjustment is not None:
+            self._replace_containers(target_linter.lang, readjustment)
 
-    return f'/update/{lang}'
+    def init_update(self, lang: str, version: str):
+        if lang not in self.version_trackers.keys():
+            raise ValueError(f'Unsupported lang: {lang}')
+        
+        if version not in self.image_store.get_versions(lang):
+            raise ValueError(f'Unsupported version: {version}')
 
+        readjustment = self.version_trackers[lang].start_update(version)
+        self._replace_containers(lang, readjustment)
 
-@app.route('/rollback', methods=['POST'])
-def rollback():
-    request_data = request.get_json()
-    lang = request_data.get('lang')
+        if self.version_trackers[lang].update_status().progress == 100:
+            self.version_trackers[lang].finish_update()
 
-    if not lang:
-        return jsonify({"status": "error", "message": "Missing 'lang' parameter"}), 400
+    def update(self, lang: str):
+        if lang not in self.version_trackers.keys():
+            raise ValueError(f'Unsupported lang: {lang}')
+        
+        readjustment = self.version_trackers[lang].move_to_next_step()
+        self._replace_containers(lang, readjustment)
 
-    return f'/rollback/{lang}'
+        if self.version_trackers[lang].update_status().progress == 100:
+            self.version_trackers[lang].finish_update()
 
+    def rollback(self, lang: str):
+        if lang not in self.version_trackers.keys():
+            raise ValueError(f'Unsupported lang: {lang}')
 
-@app.route('/status')
-def status():
-    lintersArray = []
-    for linter in linters:
-        health_check_result = health_check_info.get(linter.container.id)
-        linterDict = {}
-        linterDict[linter.container.id] = dict(
-            version=linter.version,
-            lang=linter.lang,
-            request_count=health_check_result["request_count"],
-            is_healthy=health_check_result["is_healthy"]
-        )
-        lintersArray.append(linterDict)
+        readjustment = self.version_trackers[lang].move_to_previous_step()
+        self._replace_containers(lang, readjustment)
 
-    return jsonify(linters=lintersArray), 200
+    def status(self):
+        lintersArray = []
+        for linter in self.linters:
+            health_check_result = self.health_check_info.get(linter.container.id)
+            linterDict = {}
+            linterDict[linter.container.id] = dict(
+                version=linter.version,
+                lang=linter.lang,
+                request_count=health_check_result["request_count"],
+                is_healthy=health_check_result["is_healthy"]
+            )
+            lintersArray.append(linterDict)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('config_path', type=str, help='Path to config file')
-    parser.add_argument('linters_path', type=str, help='Path to file with linter definitions')
-    args = parser.parse_args()
-
-    if args.config_path:
-        app.config.from_file(args.config_path, load=json.load)
-    else:
-        print('No config file provided, exiting')
-        exit(1)
-
-    if args.linters_path:
-        image_store = ImageStore.from_json_file(args.linters_path)
-    else:
-        print('No linters file provided, exiting')
-        exit(1)
-
-    for lang in image_store.get_languages():
-        version_trackers[lang] = VersionTracker(
-            versions=image_store.get_versions(lang), 
-            update_steps=app.config['UPDATE_STEPS']
-        )
-
-    app.run(host='0.0.0.0', port=5000)
+        return lintersArray

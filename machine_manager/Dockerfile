@@ -16,4 +16,4 @@ COPY src /app/src
 COPY config.json /app/config.json
 COPY linters.json /app/linters.json
 
-CMD ["python3", "src/machine_manager.py", "/app/config.json", "/app/linters.json"]
+CMD ["python3", "src/app.py", "/app/config.json", "/app/linters.json"]
