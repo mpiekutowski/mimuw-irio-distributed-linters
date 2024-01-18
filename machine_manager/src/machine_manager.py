@@ -22,7 +22,7 @@ class MachineManager:
         self.version_trackers = {}
         self.linters = []
         # FIXME: temporary structure, will be changed to be shared with health check worker
-        self.health_check_info = {} # dict(container_id, (request_count, is_healthy))
+        self.health_check_info = {} # dict(container_ip, (request_count, is_healthy))
         self.health_check_mutex = Lock()
         self.config = config
 
@@ -41,13 +41,13 @@ class MachineManager:
         linter = Linter(lang=lang, version=version, container=container)
         self.linters.append(linter)
         with self.health_check_mutex:
-            self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
+            self.health_check_info[linter.container.address] = dict(request_count=0, is_healthy=True)
         readjustment = self.version_trackers[lang].add(version)
 
         return linter, readjustment
     
     def _remove_linter(self, linter: Linter) -> Readjustment:
-        container_id = linter.container.id
+        ip = linter.container.address
 
         try:
             self.docker.remove(linter.container, timeout=self.config.timeout)
@@ -56,7 +56,7 @@ class MachineManager:
         
         self.linters.remove(linter)
         with self.health_check_mutex:
-            self.health_check_info.pop(container_id)
+            self.health_check_info.pop(ip)
         readjustment = self.version_trackers[linter.lang].remove(linter.version)
 
         return readjustment
@@ -153,13 +153,13 @@ class MachineManager:
         lintersArray = []
         for linter in self.linters:
             with self.health_check_mutex:
-                health_check_result = self.health_check_info.get(linter.container.id)
+                health_check_result = self.health_check_info.get(linter.container.address)
 
             if health_check_result is None:
                 continue
             
             linterDict = {}
-            linterDict[linter.container.id] = dict(
+            linterDict[linter.container.address] = dict(
                 version=linter.version,
                 lang=linter.lang,
                 request_count=health_check_result["request_count"],

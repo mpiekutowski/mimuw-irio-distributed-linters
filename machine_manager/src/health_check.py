@@ -1,4 +1,4 @@
-from threading import Thread, Lock, Event
+from threading import Thread, Event
 import time
 import sys
 import requests
@@ -23,14 +23,12 @@ class HealthCheck(Thread):
     def health_check_loop(self, health_check_info, health_check_mutex):
         with health_check_mutex:
             health_check_items = health_check_info.items()
-        for linter_id, (request_count, is_healthy) in health_check_items:
+        for linter_ip, (request_count, is_healthy) in health_check_items:
             # TODO: get host from config?
-            linter_url = f"http://{linter_id}/health"
-            response = requests.get(linter_url)
-            print(linter_url, file=sys.stderr)
+            linter_url = f"http://{linter_ip}/health"
+            print(linter_url, flush=True)
+            response = requests.get(linter_url, timeout=3)
 
-            response = requests.get(linter_url)
-            
             if response.status_code == 200:
                 print("Working")
                 print(response.text)
