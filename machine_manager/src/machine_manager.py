@@ -23,7 +23,6 @@ class MachineManager:
         self.docker = DockerWrapper()
         self.version_trackers = {}
         self.linters = []
-        # FIXME: temporary structure, will be changed to be shared with health check worker
         self.health_check_info = {} # dict(container_ip, dict(request_count, is_healthy))
         self.health_check_mutex = Lock()
         self.config = config

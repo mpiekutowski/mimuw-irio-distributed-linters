@@ -8,7 +8,7 @@ from typing import Optional
 from image_store import ImageStore
 
 from machine_manager import MachineManager, Config
-from health_check import HealthCheck, finish_health_check
+from health_check import HealthCheck, finish_health_check, HealthCheckTerminatinError
 from load_balancer_client import LoadBalancerClient
 
 app = Flask(__name__)
@@ -152,18 +152,22 @@ if __name__ == '__main__':
         update_steps=app.config['UPDATE_STEPS'],
         config=config
     )
-    
-    health_check_thread = HealthCheck(args=(
-        machine_manager.health_check_info,
-        machine_manager.health_check_mutex,
-        load_balancer,
-        config.health_check_interval))
+
+    health_check_thread = HealthCheck(
+        health_check_info=machine_manager.health_check_info,
+        health_check_mutex=machine_manager.health_check_mutex,
+        load_balancer=load_balancer,
+        health_check_interval=config.health_check_interval)
     health_check_thread.start()
 
     def handler(signal, frame):
-        finish_health_check(health_check_thread)
+        try:
+            finish_health_check(health_check_thread)
+        except HealthCheckTerminatinError as e:
+            raise e
         sys.exit(0)
 
     signal.signal(signal.SIGINT, handler)
 
     app.run(host='0.0.0.0', port=5000)
+
