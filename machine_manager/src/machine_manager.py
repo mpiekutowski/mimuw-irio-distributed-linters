@@ -2,8 +2,8 @@ from docker_wrapper import DockerWrapper, Image, DockerError, Container
 from image_store import ImageStore
 from version_tracker import VersionTracker, Readjustment
 from typing import List
-from dataclasses import dataclass
 from threading import Lock
+from dataclasses import dataclass
 
 @dataclass
 class Linter:
@@ -14,6 +14,8 @@ class Linter:
 @dataclass
 class Config:
     timeout: int
+    load_balancer_ip: str
+    health_check_interval: int
 
 class MachineManager:
     def __init__(self, image_store: ImageStore, update_steps: List[float], config: Config):
@@ -22,7 +24,7 @@ class MachineManager:
         self.version_trackers = {}
         self.linters = []
         # FIXME: temporary structure, will be changed to be shared with health check worker
-        self.health_check_info = {} # dict(container_ip, (request_count, is_healthy))
+        self.health_check_info = {} # dict(container_ip, dict(request_count, is_healthy))
         self.health_check_mutex = Lock()
         self.config = config
 

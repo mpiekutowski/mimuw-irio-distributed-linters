@@ -1,12 +1,13 @@
 from threading import Thread, Event
 import time
-import sys
 import requests
+import json
 
 class HealthCheck(Thread):
     def __init__(self,  *args, **kwargs):
         super(HealthCheck, self).__init__(*args, **kwargs)
         self._stop_health_check = Event()
+        self.health_check_info, self.health_check_mutex, self.load_balancer, self.health_check_interval = self._args
 
     def stop(self):
         self._stop_health_check.set()
@@ -16,29 +17,30 @@ class HealthCheck(Thread):
     
     def run(self):
         while not self.stopped():
-            health_check_info, health_check_mutex = self._args
-            self.health_check_loop(health_check_info, health_check_mutex)
-            time.sleep(5)
+            self.health_check_loop()
+            time.sleep(self.health_check_interval)
             
-    def health_check_loop(self, health_check_info, health_check_mutex):
-        with health_check_mutex:
-            health_check_items = health_check_info.items()
-        for linter_ip, (request_count, is_healthy) in health_check_items:
-            # TODO: get host from config?
+    def health_check_loop(self):
+        with self.health_check_mutex:
+            health_check_items = self.health_check_info.items()
+        for linter_ip, data in health_check_items:
+            if not data['is_healthy']:
+                continue
+
             linter_url = f"http://{linter_ip}/health"
-            print(linter_url, flush=True)
             response = requests.get(linter_url, timeout=3)
 
+            linter_health = response.status_code == 200
+            request_count_updated = data['request_count']
+
             if response.status_code == 200:
-                print("Working")
-                print(response.text)
+                parsed_response = json.loads(response.text)
+                request_count_updated = parsed_response['requestCount']
             else:
-                print(f"Error in request {response.status_code}", file=sys.stderr)
+                self.load_balancer.remove(linter_ip)
 
-            # request_count = info.get('request_count')
-            # is_healthy = info.get('is_healthy')
-            # print(container_id, request_count, is_healthy, file=sys.stderr)
-
+            with self.health_check_mutex:
+                self.health_check_info[linter_ip] = dict(request_count=request_count_updated, is_healthy=linter_health)
 
 def finish_health_check(health_check_thread):
     health_check_thread.stop()

@@ -9,6 +9,7 @@ from image_store import ImageStore
 
 from machine_manager import MachineManager, Config
 from health_check import HealthCheck, finish_health_check
+from load_balancer_client import LoadBalancerClient
 
 app = Flask(__name__)
 
@@ -138,13 +139,25 @@ if __name__ == '__main__':
         print('No linters file provided, exiting')
         exit(1)
 
+    config = Config(
+        timeout=app.config['STOP_TIMEOUT'],
+        load_balancer_ip = app.config['LOAD_BALANCER_IP'],
+        health_check_interval=app.config['HEALTH_CHECK_INTERVAL']
+    )
+
+    load_balancer = LoadBalancerClient(load_balancer_ip=config.load_balancer_ip)
+
     machine_manager = MachineManager(
         image_store=ImageStore.from_json_file(args.linters_path), 
         update_steps=app.config['UPDATE_STEPS'],
-        config=Config(timeout=app.config['STOP_TIMEOUT']) # Yes, this is ugly, will fix later
-        )
+        config=config
+    )
     
-    health_check_thread = HealthCheck(args=(machine_manager.health_check_info, machine_manager.health_check_mutex))
+    health_check_thread = HealthCheck(args=(
+        machine_manager.health_check_info,
+        machine_manager.health_check_mutex,
+        load_balancer,
+        config.health_check_interval))
     health_check_thread.start()
 
     def handler(signal, frame):
