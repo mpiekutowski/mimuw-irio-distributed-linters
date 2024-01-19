@@ -5,5 +5,6 @@ import pureconfig.generic.derivation.default.*
 
 final case class Config(
     port: Int,
-    host: String
+    host: String,
+    totalRatio: Int
 ) derives ConfigReader

@@ -2,9 +2,8 @@ package loadbalancer.http
 
 import cats.effect.IO
 import com.comcast.ip4s.{Host, Port}
-import loadbalancer.domain.Backends
-import loadbalancer.routers.{BackendManager, LoadBalancer}
-import loadbalancer.services.*
+import loadbalancer.domain.{UrisRef, VersionRoundRobinRef}
+import loadbalancer.routers.{LoadBalancerRouter, RatioUpdaterRouter, UriManagerRouter}
 import org.http4s.HttpApp
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
@@ -12,18 +11,18 @@ import org.http4s.server.middleware.Logger
 
 object HttpServer {
   def start(
-      backends: Backends,
-      port: Port,
       host: Host,
-      parseUri: ParseUri,
-      roundRobin: RoundRobin,
-      updateBackends: UpdateBackends
+      port: Port,
+      totalRatio: Int,
+      urisRef: UrisRef,
+      javaVRR: VersionRoundRobinRef,
+      pythonVRR: VersionRoundRobinRef
   ): IO[Unit] = (
     for {
       client <- EmberClientBuilder.default[IO].build
       httpClient = HttpClient.of(client)
       httpApp = Logger.httpApp(logHeaders = false, logBody = true)(
-        allRoutesComplete(backends, httpClient, parseUri, roundRobin, updateBackends)
+        allRoutesComplete(urisRef, javaVRR, pythonVRR, httpClient, totalRatio)
       )
       _ <- EmberServerBuilder
         .default[IO]
@@ -35,23 +34,18 @@ object HttpServer {
   ).useForever
 
   private def allRoutesComplete(
-      backends: Backends,
+      urisRef: UrisRef,
+      javaVRR: VersionRoundRobinRef,
+      pythonVRR: VersionRoundRobinRef,
       httpClient: HttpClient,
-      parseUri: ParseUri,
-      roundRobin: RoundRobin,
-      updateBackends: UpdateBackends
+      totalRatio: Int
   ): HttpApp[IO] = {
     import cats.syntax.semigroupk.*
 
-    val allRoutes = LoadBalancer.routes(
-      backends = backends,
-      sendAndExpect = SendAndExpect.toBackend(httpClient, _),
-      roundRobin = roundRobin
-    ) <+> BackendManager.routes(
-      backends = backends,
-      parseUri = parseUri,
-      updateBackends = updateBackends
-    )
+    val allRoutes =
+      LoadBalancerRouter.routes(urisRef, javaVRR, pythonVRR, httpClient) <+>
+        UriManagerRouter.routes(urisRef) <+>
+        RatioUpdaterRouter.routes(totalRatio, javaVRR, pythonVRR)
 
     allRoutes.orNotFound
   }
