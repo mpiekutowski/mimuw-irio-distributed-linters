@@ -1,4 +1,4 @@
-from docker_wrapper import Image
+from .docker_wrapper import Image
 from typing import Optional, Dict, List
 import json
 
@@ -38,4 +38,7 @@ class ImageStore:
         return list(self.images.keys())
     
     def get_versions(self, lang: str) -> List[str]:
+        if lang not in self.images:
+            return None
+
         return list(self.images[lang].keys())
