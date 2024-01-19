@@ -1,12 +1,9 @@
 package loadbalancer
 
 import cats.effect.{IO, IOApp}
-import cats.implicits.catsSyntaxTuple2Semigroupal
 import com.comcast.ip4s.{Host, Port}
-import loadbalancer.domain.{Backends, Config, Uris}
-import loadbalancer.errors.Config.InvalidConfig
+import loadbalancer.domain.*
 import loadbalancer.http.HttpServer
-import loadbalancer.services.{ParseUri, RoundRobin, UpdateBackends}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.syntax.LoggerInterpolator
@@ -17,28 +14,23 @@ object Main extends IOApp.Simple {
 
   override def run: IO[Unit] =
     for {
-      config <- IO(ConfigSource.default.loadOrThrow[Config])
-      backendUris = Uris(Vector())
-      backends    <- IO.ref(backendUris)
-      hostAndPort <- IO.fromEither(hostAndPort(config.host, config.port))
-      (host, port) = hostAndPort
+      urisRef   <- IO.ref(Uris.empty())
+      javaVRR   <- IO.ref(VersionRoundRobin.initial(Map.empty))
+      pythonVRR <- IO.ref(VersionRoundRobin.initial(Map.empty))
+      config     = ConfigSource.default.loadOrThrow[Config]
+      host       = Host.fromString(config.host).get
+      port       = Port.fromInt(config.port).get
+      totalRatio = config.totalRatio
+
       _ <- info"Starting server on $host:$port"
       _ <- HttpServer.start(
-        Backends(backends),
-        port,
         host,
-        ParseUri.Impl,
-        RoundRobin.getNextBackend,
-        UpdateBackends.Impl
+        port,
+        totalRatio,
+        UrisRef(urisRef),
+        VersionRoundRobinRef(javaVRR),
+        VersionRoundRobinRef(pythonVRR)
       )
     } yield ()
 
-  private def hostAndPort(
-      host: String,
-      port: Int
-  ): Either[InvalidConfig, (Host, Port)] =
-    (
-      Host.fromString(host),
-      Port.fromInt(port)
-    ).tupled.toRight(InvalidConfig)
 }
