@@ -51,8 +51,9 @@ class LoadBalancerClient():
         for _ in range(retries):
             time.sleep(interval)
             try:
-                requests.get(f"http://{self.load_balancer_ip}/")
-                return True
+                response = requests.get(f"http://{self.load_balancer_ip}/health")
+                if response.status_code == 200:
+                    return True
             except requests.exceptions.RequestException:
                 pass
 
