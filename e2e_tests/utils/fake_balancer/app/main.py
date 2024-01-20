@@ -8,6 +8,7 @@ class AddRequest(BaseModel):
     lang: str
     version: str
     uri: str
+    secretKey: str
 
 @app.post("/add")
 async def add(request: AddRequest):
@@ -15,6 +16,7 @@ async def add(request: AddRequest):
 
 class RemoveRequest(BaseModel):
     uri: str
+    secretKey: str
 
 @app.post("/remove")
 async def remove(request: RemoveRequest):
@@ -24,6 +26,7 @@ async def remove(request: RemoveRequest):
 class UpdateRatioRequest(BaseModel):
     lang: str
     versionRatio: Dict[str, int]
+    secretKey: str
 
 @app.post("/ratio")
 async def remove(request: UpdateRatioRequest):

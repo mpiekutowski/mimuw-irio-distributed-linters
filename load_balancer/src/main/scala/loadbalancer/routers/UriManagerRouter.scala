@@ -9,15 +9,15 @@ import org.http4s.circe.CirceEntityDecoder.*
 import org.http4s.dsl.io.*
 
 object UriManagerRouter {
-  def routes(urisRef: UrisRef): HttpRoutes[IO] = {
+  def routes(secretKey: String, urisRef: UrisRef): HttpRoutes[IO] = {
     HttpRoutes.of[IO] {
       case req @ POST -> Root / "add" =>
-        req.decode[AddUriRequest](UriManager.add(_, urisRef))
+        req.decode[AddUriRequest](UriManager.add(secretKey, _, urisRef))
       case req @ POST -> Root / "remove" =>
-        req.decode[RemoveUriRequest](UriManager.remove(_, urisRef))
+        req.decode[RemoveUriRequest](UriManager.remove(secretKey, _, urisRef))
     }
   }
 
-  case class AddUriRequest(lang: String, version: String, uri: String)
-  case class RemoveUriRequest(uri: String)
+  case class AddUriRequest(lang: String, version: String, uri: String, secretKey: String)
+  case class RemoveUriRequest(uri: String, secretKey: String)
 }

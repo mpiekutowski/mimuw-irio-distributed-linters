@@ -11,13 +11,16 @@ object RatioUpdaterRouter {
 
   def routes(
       totalRatio: Int,
+      secretKey: String,
       javaVRR: VersionRoundRobinRef,
       pythonVRR: VersionRoundRobinRef
   ): HttpRoutes[IO] = {
     HttpRoutes.of[IO] { case req @ POST -> Root / "ratio" =>
-      req.decode[UpdateRatioRequest](RatioUpdater.update(totalRatio, javaVRR, pythonVRR, _))
+      req.decode[UpdateRatioRequest](
+        RatioUpdater.update(totalRatio, secretKey, javaVRR, pythonVRR, _)
+      )
     }
   }
 
-  case class UpdateRatioRequest(lang: String, versionRatio: Map[String, Int])
+  case class UpdateRatioRequest(lang: String, versionRatio: Map[String, Int], secretKey: String)
 }

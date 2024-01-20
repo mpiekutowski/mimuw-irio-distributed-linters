@@ -21,12 +21,14 @@ object Main extends IOApp.Simple {
       host       = Host.fromString(config.host).get
       port       = Port.fromInt(config.port).get
       totalRatio = config.totalRatio
+      secretKey  = config.secretKey
 
       _ <- info"Starting server on $host:$port"
       _ <- HttpServer.start(
         host,
         port,
         totalRatio,
+        secretKey,
         UrisRef(urisRef),
         VersionRoundRobinRef(javaVRR),
         VersionRoundRobinRef(pythonVRR)
