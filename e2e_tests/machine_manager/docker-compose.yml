@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  machine-manager:
+    container_name: machine-manager
+    image: machine-manager  # TODO: Replace that with link to ghcr.io when ready
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - linter_network
+
+  test-client:
+    container_name: test-client
+    image: test-client  # TODO: Same as above
+    command: tail -f /dev/null
+    volumes:
+      - ./test_machine_manager.py:/tests/test_machine_manager.py
+      - /var/run/docker.sock:/var/run/docker.sock  # Mount this volume if you need access to host's docker daemon
+    depends_on:
+      - machine-manager
+    links:
+      - machine-manager
+    networks:
+      - linter_network
+
+networks:
+  linter_network:
+    name: linter_network
+    driver: bridge
