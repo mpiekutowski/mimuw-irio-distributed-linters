@@ -7,6 +7,6 @@ import org.http4s.dsl.io.*
 
 object HealthCheckRouter {
   def routes(): HttpRoutes[IO] = {
-    HttpRoutes.of[IO] { case GET -> Root / "health-check" => Ok("") }
+    HttpRoutes.of[IO] { case GET -> Root / "health" => Ok("") }
   }
 }
