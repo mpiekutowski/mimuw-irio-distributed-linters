@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  machine-manager:
+    container_name: machine-manager
+    image: machine-manager
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - linter_network
+
+  test-client:
+    container_name: test-client
+    image: test-client
+    command: tail -f /dev/null
+    volumes:
+      - ./test_sanity_check.py:/tests/test_sanity_check.py
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - machine-manager
+    links:
+      - machine-manager
+    networks:
+      - linter_network
+
+networks:
+  linter_network:
+    name: linter_network
+    driver: bridge
