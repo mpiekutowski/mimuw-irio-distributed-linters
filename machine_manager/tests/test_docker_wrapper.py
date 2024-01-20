@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 import docker.errors
 import pytest
-from src.docker_wrapper import DockerWrapper, DockerError, Image, Container
+from docker_wrapper import DockerWrapper, DockerError, Image, Container
 
 @pytest.fixture()
 def mock_client():
@@ -21,17 +21,20 @@ def test_network_not_found():
             DockerWrapper()
 
 def test_run_success(mock_client):
+    CONTAINER_ADDRESS = "172.0.0.1"
+    CONTAINER_ID = "some_id"
+
     mock_container = Mock()
     mock_container.attrs = {
         "NetworkSettings": {
             "Networks": {
                 "linter_network": {
-                    "IPAddress": "172.0.0.1"
+                    "IPAddress": CONTAINER_ADDRESS
                 }
             }
         }
     }
-    mock_container.id = "some_id"
+    mock_container.id = CONTAINER_ID
     mock_client.containers.run.return_value = mock_container
 
     with patch('docker.from_env', return_value=mock_client):
@@ -40,8 +43,8 @@ def test_run_success(mock_client):
         image = Image(name='image_name', app_port=1234, env={"some": "env"})
         container = docker_wrapper.create(image)
 
-        assert container.address == f"172.0.0.1:{image.app_port}"
-        assert container.id == "some_id"
+        assert container.address == f"{CONTAINER_ADDRESS}:{image.app_port}"
+        assert container.id == CONTAINER_ID
 
         mock_client.containers.run.assert_called_with(
             image=image.name,
