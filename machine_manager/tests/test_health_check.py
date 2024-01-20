@@ -21,7 +21,7 @@ def health_check_init(health_check_info = {}, mutex = Lock()):
             health_check_info=health_check_info,
             health_check_mutex=mutex,
             load_balancer=load_balancer,
-            health_check_interval=0.5
+            health_check_interval=0.1
         )
 
 class TestHealthCheckInit:
