@@ -1,7 +1,7 @@
 import json
 import pytest
-from src.image_store import ImageStore
-from src.docker_wrapper import Image
+from image_store import ImageStore
+from docker_wrapper import Image
 import tempfile
 import os
 

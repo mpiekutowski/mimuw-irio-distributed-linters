@@ -1,7 +1,7 @@
 import pytest
 from math import ceil
 
-from src.version_tracker import VersionTracker, Readjustment, UpdateStatus
+from version_tracker import VersionTracker, Readjustment, UpdateStatus
 
 
 def do_readjustment(tracker, readjustment):
