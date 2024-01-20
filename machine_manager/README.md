@@ -3,7 +3,7 @@
 ### Setup
 
 #### Build
-`docker build -t machine-manager .`
+`docker build -t machine_manager .`
 
 #### Run
 Before first run:

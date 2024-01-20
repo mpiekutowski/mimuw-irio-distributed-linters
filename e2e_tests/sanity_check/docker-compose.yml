@@ -3,7 +3,7 @@ version: '3'
 services:
   machine-manager:
     container_name: machine-manager
-    image: machine-manager  # TODO: Replace that with link to ghcr.io when ready
+    image: ghcr.io/mpiekutowski/machine_manager
     ports:
       - "5000:5000"
     volumes:
@@ -13,7 +13,7 @@ services:
 
   test-client:
     container_name: test-client
-    image: test-client  # TODO: Same as above
+    image: ghcr.io/mpiekutowski/test_client
     command: tail -f /dev/null
     volumes:
       - ./test_sanity_check.py:/tests/test_sanity_check.py

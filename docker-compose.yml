@@ -2,11 +2,8 @@ version: '3'
 
 services:
   machine-manager:
-    build:   # TODO: change to ghcr.io once done
-      context: machine_manager
-      dockerfile: Dockerfile
     container_name: machine-manager
-    image: machine-manager
+    image: ghcr.io/mpiekutowski/machine_manager
     ports:
       - "5000:5000"
     volumes:
