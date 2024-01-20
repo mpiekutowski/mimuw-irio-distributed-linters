@@ -18,7 +18,7 @@ services:
 
   load-balancer:
     container_name: load-balancer
-    image: ghcr.io/mpiekutowski/load_balancer:latest
+    image: ghcr.io/mpiekutowski/load_balancer
     ports:
       - "8080:8080"   
     networks:
