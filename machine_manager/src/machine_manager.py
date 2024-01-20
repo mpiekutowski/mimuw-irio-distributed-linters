@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from load_balancer_client import LoadBalancerClient
 import requests
 import signal
+import time
+import requests
 
 @dataclass
 class Linter:
@@ -69,8 +71,11 @@ class MachineManager:
             raise RuntimeError(e)
 
         self.linters.append(linter)
+
+        is_healthy = self._wait_for_linter(linter, 10, 1)
+
         with self.health_check_mutex:
-            self.health_check_info[linter.container.address] = dict(request_count=0, is_healthy=True)
+            self.health_check_info[linter.container.address] = dict(request_count=0, is_healthy=is_healthy)
         readjustment = self.version_trackers[lang].add(version)
 
         return linter, readjustment
@@ -115,6 +120,18 @@ class MachineManager:
 
         if count != 0:
             raise RuntimeError(f'Internal error: readjustment count mismatch: {count}')
+        
+    def _wait_for_linter(self, linter: Linter, count: int, interval: int) -> bool:
+        for _ in range(count):
+            time.sleep(interval)
+            try:
+                response = requests.get(f'http://{linter.container.address}/health')
+                if response.status_code == 200:
+                    return True
+            except requests.exceptions.RequestException:
+                continue
+
+        return False
         
     def _update_loadbalancing(self, lang: str):
         update_status = self.version_trackers[lang].update_status()
