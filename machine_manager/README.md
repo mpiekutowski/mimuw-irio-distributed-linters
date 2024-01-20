@@ -6,6 +6,10 @@
 `docker build -t machine-manager .`
 
 #### Run
+Before first run:
+`docker network create linter_network`
+
+For each run:
 `docker run -p 5000:5000 --network linter_network -v /var/run/docker.sock:/var/run/docker.sock machine-manager`
 
 The `/var/run/...` part is needed to be able to spawn containers on the host system from inside MM container.

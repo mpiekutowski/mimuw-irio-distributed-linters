@@ -28,7 +28,7 @@ class DockerWrapper:
         try:
             self.network = self.client.networks.get(network_name)
         except docker.errors.NotFound:
-            self.network = self.client.networks.create(network_name)
+            raise DockerError(f"Network {network_name} not found")
 
     def create(self, image: Image):
         try:
