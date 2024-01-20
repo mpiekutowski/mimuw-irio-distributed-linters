@@ -2,18 +2,20 @@ from docker_wrapper import DockerWrapper, Image, DockerError, Container
 from image_store import ImageStore
 from version_tracker import VersionTracker, Readjustment
 from typing import List
+from threading import Lock
 from dataclasses import dataclass
 
 @dataclass
 class Linter:
     lang: str
     version: str
-    host_port: int
     container: Container
 
 @dataclass
 class Config:
     timeout: int
+    load_balancer_ip: str
+    health_check_interval: int
 
 class MachineManager:
     def __init__(self, image_store: ImageStore, update_steps: List[float], config: Config):
@@ -21,8 +23,8 @@ class MachineManager:
         self.docker = DockerWrapper()
         self.version_trackers = {}
         self.linters = []
-        # FIXME: temporary structure, will be changed to be shared with health check worker
-        self.health_check_info = {} # dict(container_id, (request_count, is_healthy))
+        self.health_check_info = {} # dict(container_ip, dict(request_count, is_healthy))
+        self.health_check_mutex = Lock()
         self.config = config
 
         for lang in image_store.get_languages():
@@ -37,15 +39,16 @@ class MachineManager:
         except DockerError as e:
             raise RuntimeError(e)
         
-        linter = Linter(lang=lang, version=version, host_port=container.host_port, container=container)
+        linter = Linter(lang=lang, version=version, container=container)
         self.linters.append(linter)
-        self.health_check_info[container.id] = dict(request_count=0, is_healthy=True)
+        with self.health_check_mutex:
+            self.health_check_info[linter.container.address] = dict(request_count=0, is_healthy=True)
         readjustment = self.version_trackers[lang].add(version)
 
         return linter, readjustment
     
     def _remove_linter(self, linter: Linter) -> Readjustment:
-        container_id = linter.container.id
+        ip = linter.container.address
 
         try:
             self.docker.remove(linter.container, timeout=self.config.timeout)
@@ -53,7 +56,8 @@ class MachineManager:
             raise RuntimeError(e)
         
         self.linters.remove(linter)
-        self.health_check_info.pop(container_id)
+        with self.health_check_mutex:
+            self.health_check_info.pop(ip)
         readjustment = self.version_trackers[linter.lang].remove(linter.version)
 
         return readjustment
@@ -100,20 +104,16 @@ class MachineManager:
 
         return linter
     
-    # TODO: move to full address instead of just port
-    def delete_linter(self, ip_port: str):
-        _, port = ip_port.split(':')
-        host_port = int(port)
-
+    def delete_linter(self, address: str):
         target_linter = None
 
         for linter in self.linters:
-            if linter.host_port == host_port:
+            if linter.container.address == address:
                 target_linter = linter
                 break
 
         if target_linter is None:
-            raise ValueError(f'No linter with host_port: {host_port}')
+            raise ValueError(f'No linter with address: {address}')
         
         readjustment = self._remove_linter(target_linter)
 
@@ -153,9 +153,14 @@ class MachineManager:
     def status(self):
         lintersArray = []
         for linter in self.linters:
-            health_check_result = self.health_check_info.get(linter.container.id)
+            with self.health_check_mutex:
+                health_check_result = self.health_check_info.get(linter.container.address)
+
+            if health_check_result is None:
+                continue
+            
             linterDict = {}
-            linterDict[linter.container.id] = dict(
+            linterDict[linter.container.address] = dict(
                 version=linter.version,
                 lang=linter.lang,
                 request_count=health_check_result["request_count"],
