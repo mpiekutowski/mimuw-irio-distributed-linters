@@ -32,6 +32,6 @@ class UpdateRatioRequest(BaseModel):
 async def remove(request: UpdateRatioRequest):
     return "Ratio updated"
 
-@app.get("/health-check")
+@app.get("/health")
 async def remove():
     return ""
