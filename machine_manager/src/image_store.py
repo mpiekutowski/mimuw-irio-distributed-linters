@@ -1,4 +1,4 @@
-from .docker_wrapper import Image
+from docker_wrapper import Image
 from typing import Optional, Dict, List
 import json
 
