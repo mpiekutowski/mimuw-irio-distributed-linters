@@ -25,28 +25,28 @@ Example:
 Remove an existing container based on it's IP and port.
 
 Example:
-`curl -X POST -H "Content-Type: application/json" -d '{"ip_port": "127.0.0.1:32768"}' http://localhost:5000/delete`
+`curl -X POST -H "Content-Type: application/json" -d '{"ip": "127.0.0.1:32768"}' http://localhost:5000/delete`
 
-### Init update
+#### Init update
 
 Initialize update for given language to given version.
 This will already push the update into the first step (so some containers may be altered).
 
 `curl -X POST -H "Content-Type: application/json" -d '{"lang": "java", "version": "1.1"}' http://localhost:5000/init-update`
 
-### Update
+#### Update
 
 Push the update for given language into the next update step.
 
 `curl -X POST -H "Content-Type: application/json" -d '{"lang": "java"}' http://localhost:5000/update`
 
-### Rollback
+#### Rollback
 
 Rollback the update for given language into the previous step.
 
 `curl -X POST -H "Content-Type: application/json" -d '{"lang": "java"}' http://localhost:5000/rollback`
 
-### Status
+#### Status
 
 Get status of all running linters.
 

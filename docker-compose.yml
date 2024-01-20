@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  machine-manager:
+    build:   # TODO: change to ghcr.io once done
+      context: machine_manager
+      dockerfile: Dockerfile
+    container_name: machine-manager
+    image: machine-manager
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - linter_network
+    environment:
+      - SECRET_KEY=123
+
+  load-balancer:
+    container_name: load-balancer
+    image: ghcr.io/mpiekutowski/load_balancer:latest
+    ports:
+      - "8080:8080"   
+    networks:
+      - linter_network
+    environment:
+      - SECRET_KEY=123
+
+networks:
+  linter_network:
+    name: linter_network
+    driver: bridge
