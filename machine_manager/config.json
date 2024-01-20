@@ -1,6 +1,7 @@
 {
-    "HOST_IP": "127.0.0.1",
-    "LOAD_BALANCER_IP": "127.0.0.1:8080",
+    "LOAD_BALANCER_IP": "load-balancer:8080",
+    "LOAD_BALANCER_STARTUP_RETRIES": 10,
+    "LOAD_BALANCER_STARTUP_INTERVAL": 1,
     "STOP_TIMEOUT": 10,
     "UPDATE_STEPS": [
         1, 5, 10, 50, 100

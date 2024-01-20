@@ -6,6 +6,7 @@ import sys
 import signal
 from typing import Optional
 from image_store import ImageStore
+import os
 
 from machine_manager import MachineManager, Config
 from health_check import HealthCheck, finish_health_check, HealthCheckTerminatinError
@@ -145,12 +146,18 @@ if __name__ == '__main__':
         health_check_interval=app.config['HEALTH_CHECK_INTERVAL']
     )
 
-    load_balancer = LoadBalancerClient(load_balancer_ip=config.load_balancer_ip)
+    load_balancer = LoadBalancerClient(load_balancer_ip=config.load_balancer_ip, secret_key=os.environ.get("SECRET_KEY"))
+
+    load_balancer_started = load_balancer.wait_for_it(app.config["LOAD_BALANCER_STARTUP_RETRIES"], app.config["LOAD_BALANCER_STARTUP_INTERVAL"])
+    if not load_balancer_started:
+        print("Load balancer did not start in time, exiting")
+        exit(1)
 
     machine_manager = MachineManager(
         image_store=ImageStore.from_json_file(args.linters_path), 
         update_steps=app.config['UPDATE_STEPS'],
-        config=config
+        config=config,
+        load_balancer=load_balancer
     )
 
     health_check_thread = HealthCheck(
