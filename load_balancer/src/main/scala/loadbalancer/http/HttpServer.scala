@@ -14,6 +14,7 @@ object HttpServer {
       host: Host,
       port: Port,
       totalRatio: Int,
+      secretKey: String,
       urisRef: UrisRef,
       javaVRR: VersionRoundRobinRef,
       pythonVRR: VersionRoundRobinRef
@@ -22,7 +23,7 @@ object HttpServer {
       client <- EmberClientBuilder.default[IO].build
       httpClient = HttpClient.of(client)
       httpApp = Logger.httpApp(logHeaders = false, logBody = true)(
-        allRoutesComplete(urisRef, javaVRR, pythonVRR, httpClient, totalRatio)
+        allRoutesComplete(urisRef, javaVRR, pythonVRR, httpClient, totalRatio, secretKey)
       )
       _ <- EmberServerBuilder
         .default[IO]
@@ -38,14 +39,15 @@ object HttpServer {
       javaVRR: VersionRoundRobinRef,
       pythonVRR: VersionRoundRobinRef,
       httpClient: HttpClient,
-      totalRatio: Int
+      totalRatio: Int,
+      secretKey: String
   ): HttpApp[IO] = {
     import cats.syntax.semigroupk.*
 
     val allRoutes =
       LoadBalancerRouter.routes(urisRef, javaVRR, pythonVRR, httpClient) <+>
-        UriManagerRouter.routes(urisRef) <+>
-        RatioUpdaterRouter.routes(totalRatio, javaVRR, pythonVRR)
+        UriManagerRouter.routes(secretKey, urisRef) <+>
+        RatioUpdaterRouter.routes(totalRatio, secretKey, javaVRR, pythonVRR)
 
     allRoutes.orNotFound
   }
