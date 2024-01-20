@@ -3,8 +3,8 @@ from threading import Lock
 import time
 import json
 
-from src.health_check import HealthCheck, finish_health_check
-from src.load_balancer_client import LoadBalancerClient
+from health_check import HealthCheck, finish_health_check
+from load_balancer_client import LoadBalancerClient
 
 def mocked_load_balancer_remove(linter_ip):
     with patch('requests.post') as mock_post:
