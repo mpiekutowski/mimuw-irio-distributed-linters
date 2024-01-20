@@ -47,7 +47,8 @@ object HttpServer {
     val allRoutes =
       LoadBalancerRouter.routes(urisRef, javaVRR, pythonVRR, httpClient) <+>
         UriManagerRouter.routes(secretKey, urisRef) <+>
-        RatioUpdaterRouter.routes(totalRatio, secretKey, javaVRR, pythonVRR)
+        RatioUpdaterRouter.routes(totalRatio, secretKey, javaVRR, pythonVRR) <+>
+        HealthCheckRouter.routes()
 
     allRoutes.orNotFound
   }
