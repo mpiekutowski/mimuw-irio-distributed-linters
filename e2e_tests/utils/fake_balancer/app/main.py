@@ -31,3 +31,7 @@ class UpdateRatioRequest(BaseModel):
 @app.post("/ratio")
 async def remove(request: UpdateRatioRequest):
     return "Ratio updated"
+
+@app.get("/health-check")
+async def remove():
+    return ""
