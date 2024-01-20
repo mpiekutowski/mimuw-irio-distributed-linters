@@ -1,6 +1,15 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+version := "1.0"
 
-ThisBuild / scalaVersion := "3.3.0"
+scalaVersion := "3.3.0"
+
+enablePlugins(
+  JavaAppPackaging,
+  DockerPlugin
+)
+
+Compile / mainClass  := Some("loadbalancer.Main")
+Docker / packageName := "load_balancer"
+dockerBaseImage      := "openjdk:19"
 
 val Http4sVersion          = "0.23.23"
 val MunitVersion           = "0.7.29"
@@ -11,7 +20,7 @@ val CirceVersion           = "0.14.5"
 
 lazy val root = (project in file("."))
   .settings(
-    name := "load-balancer",
+    name         := "load-balancer",
     scalaVersion := "3.3.0",
     libraryDependencies ++= Seq(
       "org.http4s"            %% "http4s-ember-server" % Http4sVersion,
