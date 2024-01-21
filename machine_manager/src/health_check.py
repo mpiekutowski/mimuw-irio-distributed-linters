@@ -12,6 +12,9 @@ def finish_health_check(health_check_thread):
 class HealthCheckTerminatinError(Exception):
     pass
 
+class LinterUnhealthyException(Exception):
+    pass
+
 class HealthCheck(Thread):
     def __init__(self, health_check_info, health_check_mutex, load_balancer, health_check_interval, *args, **kwargs):
         super(HealthCheck, self).__init__(*args, **kwargs)
@@ -30,8 +33,8 @@ class HealthCheck(Thread):
     def run(self):
         try:
             while not self.stopped():
-                self.health_check_loop()
                 time.sleep(self.health_check_interval)
+                self.health_check_loop()
         except HealthCheckTerminatinError as e:
             _thread.interrupt_main()
             raise e
@@ -43,16 +46,19 @@ class HealthCheck(Thread):
             if not data['is_healthy']:
                 continue
 
-            linter_url = f"http://{linter_ip}/health"
-            response = requests.get(linter_url, timeout=3)
-
-            linter_health = response.status_code == 200
             request_count_updated = data['request_count']
 
-            if response.status_code == 200:
-                parsed_response = json.loads(response.text)
-                request_count_updated = parsed_response['requestCount']
-            else:
+            linter_url = f"http://{linter_ip}/health"
+            try:
+                response = requests.get(linter_url, timeout=3)
+                linter_health = response.status_code == 200
+                if response.status_code == 200:
+                    parsed_response = json.loads(response.text)
+                    request_count_updated = parsed_response['requestCount']
+                else:
+                    raise LinterUnhealthyException
+            except Exception:
+                linter_health = False
                 try:
                     self.load_balancer.remove(linter_ip)
                 except requests.exceptions.RequestException as e:
