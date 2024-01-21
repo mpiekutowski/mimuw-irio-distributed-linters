@@ -97,59 +97,58 @@ def get_linter_from_status(linter_ip):
     return None
 
 
+
 ###################### TESTS ######################
 
 # FIXME: docker ps
 # Created machine is present in `docker ps` output
-# def test_create_MM():
-#     create_data = create_response = MM_create('java')
+def test_create_MM():
+    create_response = MM_create('java')
+    assert create_response.status_code == 200
+    create_data = json.loads(create_response.text)
+    linter_ip = create_data['ip']
 
-#     command = "docker ps"
-#     result = subprocess.run(command, shell=True, capture_output=True, text=True)
-#     # assert result.returncode == 0, f"Command '{command}' failed with output: {result.stderr}"
-#     # assert "CONTAINER ID" in result.stdout, "Expected header not found in 'docker ps' output"
-#     # assert "your_container_name" in result.stdout, "Expected container not found in 'docker ps' output"
-#     # print(result.stdout)
+    # command = "docker ps"
+    # result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    # assert result.returncode == 0, f"Command '{command}' failed with output: {result.stderr}"
+    # assert 'linter' in result.stdout
 
-#     linter_ip = create_data['ip']
-
-#     status_response = MM_status()
-#     assert status_response.status_code == 200
+    assert get_linter_from_status(linter_ip)
 
 
 # FIXME: docker ps
-# Deleted machine is no longer present in `docker ps` output
-# def test_delete_MM():
-#     create_response = MM_create('java')
-#     assert create_response.status_code == 200
+# Created machine is present in `docker ps` output
+def test_delete_MM():
+    create_response = MM_create('java')
+    assert create_response.status_code == 200
+    create_data = json.loads(create_response.text)
+    linter_ip = create_data['ip']
 
-#     create_response_data = json.loads(create_response.text)
-#     linter_ip = create_response_data['ip']
+    delete_response = MM_delete(linter_ip)
+    assert delete_response.status_code == 200
 
-#     status_response = MM_status()
-#     assert status_response.status_code == 200
+    # command = "docker ps"
+    # result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    # assert result.returncode == 0, f"Command '{command}' failed with output: {result.stderr}"
+    # assert 'linter' not in result.stdout
 
-#     delete_response = MM_delete(linter_ip, timeout=30)
-#     assert delete_response.status_code == 200
-
-#     delete_response = MM_delete(linter_ip, timeout=30)
-#     assert delete_response.status_code != 200
+    assert not get_linter_from_status(linter_ip)
 
 
 # Delete existing linter returns 200 and otherwise not
-# def test_create_delete():
-#     create_response = MM_create('java')
-#     assert create_response.status_code == 200
-#     linter_ip = get_response_field(create_response, 'ip')
+def test_create_delete():
+    create_response = MM_create('java')
+    assert create_response.status_code == 200
+    linter_ip = get_response_field(create_response, 'ip')
 
-#     status_response = MM_status()
-#     assert status_response.status_code == 200
+    status_response = MM_status()
+    assert status_response.status_code == 200
 
-#     delete_response = MM_delete(linter_ip, timeout=30)
-#     assert delete_response.status_code == 200
+    delete_response = MM_delete(linter_ip, timeout=30)
+    assert delete_response.status_code == 200
 
-#     delete_response = MM_delete(linter_ip, timeout=30)
-#     assert delete_response.status_code != 200
+    delete_response = MM_delete(linter_ip, timeout=30)
+    assert delete_response.status_code != 200
 
 
 # Linters are created with proper languages
@@ -193,9 +192,9 @@ def test_lint_request_count():
 
     assert get_linter_from_status(linter_ip).get('request_count', -1) == 2
 
-    response = linter_lint(linter_ip, is_code_proper=False)
-    response = linter_lint(linter_ip, is_code_proper=False)
-    response = linter_lint(linter_ip, is_code_proper=False)
+    response = linter_lint(linter_ip)
+    response = linter_lint(linter_ip)
+    response = linter_lint(linter_ip)
     assert response.status_code == 200
     time.sleep(6) #FIXME: health_check_interval + 1
     assert get_linter_from_status(linter_ip).get('request_count', -1) == 5
@@ -218,16 +217,6 @@ def test_update_create_version():
     v2_cnt = sum(1 for linter in linters_array for ip in linter if linter[ip]['version'] == '2.0')
 
     assert v1_cnt == 10 and v2_cnt == 1
-
-
-# Machine manager keeps machine ratio during the update
-# Call /create/{lang} with chosen language 2 times, wait for response each time.
-# Call /init-update/{version, lang} to start updating to a new version.
-# Call /status.
-# Check:
-# For the current update ratio in [0.1%, 1%, 10%, 50%] there should be 1 machine on the old version, 1 on the new version.
-# For the current update ratio 100%, both machines should be on the new version.
-#  Repeat steps 3-4 until we hit update ratio 100% (check MM config to keep track of ratios).
 
 
 
