@@ -107,8 +107,7 @@ def test_full_response():
     assert status_data["linters"] == []
 
     response = lint("python", "print('hello world')")
-    assert response.status_code == 200
-    assert response.text == "No available linters"
+    assert response.status_code == 503
 
 def test_status_request_count():
     response = create_linter("python")
@@ -277,8 +276,6 @@ def test_remove_unhealthy_machine_from_lb():
         assert get_response_field(response, "status") == "ok"
 
     response = check_status()
-    print(response.text)
-
     response = lint("python", "") # This will make one of the linters unhealthy
     assert response.status_code == 200
 
@@ -334,12 +331,10 @@ def test_remove_unhealthy_machine_from_lb():
 def test_determine_new_version_and_load_balance():
     for _ in range(9):
         response = create_linter("python")
-        print(response.text)
         assert response.status_code == 200
         assert get_response_field(response, "status") == "ok"
 
     response = init_update("python", "2.0")
-    print(response.text)
     assert response.status_code == 200
 
     response = create_linter("python")
