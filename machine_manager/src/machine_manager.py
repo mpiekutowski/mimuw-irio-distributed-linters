@@ -138,10 +138,10 @@ class MachineManager:
 
         ratio = {}
         if update_status.progress == 100:
-            ratio[update_status.to_version] = 100
+            ratio[update_status.next_version] = 100
         else:
-            ratio[update_status.from_version] = 100 - update_status.progress
-            ratio[update_status.to_version] = update_status.progress
+            ratio[update_status.current_version] = 100 - update_status.progress
+            ratio[update_status.next_version] = update_status.progress
 
         try:
             self.load_balancer.ratio(lang, ratio)
