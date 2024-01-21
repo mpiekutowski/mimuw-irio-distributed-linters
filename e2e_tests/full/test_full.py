@@ -24,15 +24,12 @@ def create_linter(language, timeout=3):
         return requests.post(create_url, json=body, headers=headers, timeout=timeout)
 
 def delete_linter(linter_ip, timeout=3):
-    print(f"Deleting linter {linter_ip}")
-
     delete_url = f"{machine_manager_url}/delete"
     headers = {'Content-Type': 'application/json'}
     body = {
         "ip": linter_ip
     }
     response = requests.post(delete_url, json=body, headers=headers, timeout=timeout)
-    print(response.text)
     return response
 
 def init_update(language, version, timeout=3):
@@ -264,3 +261,177 @@ def test_machine_and_traffic_ratio():
         else:
             assert response.status_code == 400
             assert get_response_field(response, "status") == "error"
+
+def test_remove_unhealthy_machine_from_lb():
+    response = init_update("python", "1.2") # 1.2 is broken version
+    assert response.status_code == 200
+
+    while response.status_code == 200:
+        response = update("python")
+
+    assert response.status_code == 400 # This means that traffic is set to 100% on version 1.2
+
+    for _ in range(2):
+        response = create_linter("python")
+        assert response.status_code == 200
+        assert get_response_field(response, "status") == "ok"
+
+    response = check_status()
+    print(response.text)
+
+    response = lint("python", "") # This will make one of the linters unhealthy
+    assert response.status_code == 200
+
+    time.sleep(2 * HEALTH_CHECK_INTERVAL)
+
+    response = check_status()
+    assert response.status_code == 200
+
+    status_data = json.loads(response.text)
+    linters = status_data["linters"]
+    assert len(linters) == 2
+
+    healthy_found = False
+    unhealthy_found = False
+    healthy_ip = None
+    for linter in linters:
+        linter_ip = list(linter.keys())[0]
+        assert linter[linter_ip]["version"] == "1.2"
+
+        if linter[linter_ip]["is_healthy"]:
+            healthy_found = True
+            healthy_ip = linter_ip
+        elif not linter[linter_ip]["is_healthy"]:
+            unhealthy_found = True
+
+    assert healthy_found and unhealthy_found
+
+    for _ in range(100):
+        response = lint("python", "print('hello world')\n")
+        assert response.status_code == 200
+        assert get_response_field(response, "result") == True
+
+    time.sleep(2 * HEALTH_CHECK_INTERVAL)
+
+    response = check_status()
+    assert response.status_code == 200
+    status_data = json.loads(response.text)
+    linters = status_data["linters"]
+
+    for linter in linters:
+        if list(linter.keys())[0] == healthy_ip:
+            assert linter[healthy_ip]["request_count"] == 100
+
+    # Bring back to version 1.0
+    response = init_update("python", "1.0")
+    assert response.status_code == 200
+
+    while response.status_code == 200:
+        response = update("python")
+    
+    assert response.status_code == 400
+
+def test_determine_new_version_and_load_balance():
+    for _ in range(9):
+        response = create_linter("python")
+        print(response.text)
+        assert response.status_code == 200
+        assert get_response_field(response, "status") == "ok"
+
+    print("Created 9 linters")
+
+    response = init_update("python", "2.0")
+    print(response.text)
+    assert response.status_code == 200
+
+    print("Init update done")
+
+    response = create_linter("python")
+    assert response.status_code == 200
+    assert get_response_field(response, "status") == "ok"
+
+    print("Created 10th linter")
+
+    time.sleep(2 * HEALTH_CHECK_INTERVAL)
+
+    print("Waited for health check")
+
+    response = check_status()
+    assert response.status_code == 200
+    status_data = json.loads(response.text)
+    linters = status_data["linters"]
+
+    print("Got health check info")
+
+    old_version_count = 0
+    new_version_count = 0
+
+    for linter in linters:
+        linter_ip = list(linter.keys())[0]
+
+        if linter[linter_ip]["version"] == "1.0":
+            old_version_count += 1
+        elif linter[linter_ip]["version"] == "2.0":
+            new_version_count += 1
+
+    assert old_version_count == 9
+    assert new_version_count == 1
+
+    print("Checked version counts")
+
+    for _ in range(100):
+        response = lint("python", "print('hello world')\n")
+        assert response.status_code == 200
+        assert get_response_field(response, "result") == True
+
+    print("Linted 100 times")
+
+    time.sleep(2 * HEALTH_CHECK_INTERVAL)
+
+    print("Waited for health check")
+
+    response = check_status()
+    assert response.status_code == 200
+    status_data = json.loads(response.text)
+    linters = status_data["linters"]
+
+    print("Got health check info")
+
+    for linter in linters:
+        linter_ip = list(linter.keys())[0]
+
+        if linter[linter_ip]["version"] == "1.0":
+            assert linter[linter_ip]["request_count"] == 11
+        elif linter[linter_ip]["version"] == "2.0":
+            assert linter[linter_ip]["request_count"] == 1
+
+    print("Checked request counts")
+
+    # Finish the update
+    response = update("python")
+    assert response.status_code == 200
+    
+    print("Started finalizing update")
+
+    while response.status_code == 200:
+        response = update("python", 30)
+
+    print(response.status_code)
+    print(response.text)
+
+    assert response.status_code == 400
+
+    print("Finished updated")
+
+    response = init_update("python", "1.0")
+    assert response.status_code == 200
+
+    print("Init update done")
+
+    while response.status_code == 200:
+        response = update("python")
+
+    assert response.status_code == 400
+
+    print("Finished updated")
+    print("Starting cleanup")
