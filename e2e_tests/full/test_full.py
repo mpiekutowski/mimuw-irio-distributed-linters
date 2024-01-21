@@ -2,6 +2,7 @@ import pytest
 import requests
 import json
 import time
+import math
 
 machine_manager_url = 'http://machine-manager:5000'
 load_balancer_url = 'http://load-balancer:8080'
@@ -182,6 +183,28 @@ def check_request_count_delta(before_array, after_array, old_version, new_versio
             request_count_delta = linter_after[linter_ip]["request_count"] - linter_before[linter_ip]["request_count"]
             assert request_count_delta == new_version_target_delta
 
+def check_machine_ratio(linter_array, old_version, new_version, update_step):
+    linter_count = 0
+    old_version_count = 0
+    new_version_count = 0
+
+    for linter in linter_array:
+        linter_ip = list(linter.keys())[0]
+        linter_count += 1
+
+        if linter[linter_ip]["version"] == old_version:
+            old_version_count += 1
+        elif linter[linter_ip]["version"] == new_version:
+            new_version_count += 1
+
+    assert old_version_count + new_version_count == linter_count
+
+    target_new_version_count = math.ceil(linter_count * update_step / 100.)
+    target_old_version_count = linter_count - target_new_version_count
+
+    assert old_version_count == target_old_version_count
+    assert new_version_count == target_new_version_count
+
 def test_machine_and_traffic_ratio():
     response = init_update("python", "2.0")
     assert response.status_code == 200
@@ -201,6 +224,8 @@ def test_machine_and_traffic_ratio():
         status_data = json.loads(response.text)
         before_array = status_data["linters"]
         assert len(before_array) == 2
+
+        check_machine_ratio(before_array, "1.0", "2.0", step)
 
         for _ in range(REQUEST_COUNT):
             response = lint("python", "print('hello world')\n")
