@@ -41,7 +41,7 @@ class HealthCheck(Thread):
             
     def health_check_loop(self):
         with self.health_check_mutex:
-            health_check_items = self.health_check_info.items()
+            health_check_items = list(self.health_check_info.items())
         for linter_ip, data in health_check_items:
             if not data['is_healthy']:
                 continue
