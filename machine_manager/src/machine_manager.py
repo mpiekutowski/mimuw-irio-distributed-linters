@@ -109,7 +109,9 @@ class MachineManager:
         to_version = readjustment.to_version
         count = readjustment.count
 
-        for linter in self.linters:
+        linters_copy = self.linters.copy()
+
+        for linter in linters_copy:
             if linter.lang == lang and linter.version == from_version:
                 self._remove_linter(linter)
                 self._create_linter(lang, to_version, self.image_store.get_image(lang, to_version))
