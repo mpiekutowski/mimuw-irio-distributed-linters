@@ -24,7 +24,7 @@ object LoadBalancer {
       req: Request[IO]
   ): IO[Response[IO]] =
     getNextUri(lang, urisRef, roundRobinRef).flatMap {
-      _.fold(Ok("No available linters")) { uri =>
+      _.fold(ServiceUnavailable("No available linters")) { uri =>
         for {
           response <- send(httpClient, req, uri.withPath(path"/lint"))
           result   <- Ok(response)
