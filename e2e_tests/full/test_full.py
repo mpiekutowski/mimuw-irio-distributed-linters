@@ -338,30 +338,20 @@ def test_determine_new_version_and_load_balance():
         assert response.status_code == 200
         assert get_response_field(response, "status") == "ok"
 
-    print("Created 9 linters")
-
     response = init_update("python", "2.0")
     print(response.text)
     assert response.status_code == 200
-
-    print("Init update done")
 
     response = create_linter("python")
     assert response.status_code == 200
     assert get_response_field(response, "status") == "ok"
 
-    print("Created 10th linter")
-
     time.sleep(2 * HEALTH_CHECK_INTERVAL)
-
-    print("Waited for health check")
 
     response = check_status()
     assert response.status_code == 200
     status_data = json.loads(response.text)
     linters = status_data["linters"]
-
-    print("Got health check info")
 
     old_version_count = 0
     new_version_count = 0
@@ -377,25 +367,17 @@ def test_determine_new_version_and_load_balance():
     assert old_version_count == 9
     assert new_version_count == 1
 
-    print("Checked version counts")
-
     for _ in range(100):
         response = lint("python", "print('hello world')\n")
         assert response.status_code == 200
         assert get_response_field(response, "result") == True
 
-    print("Linted 100 times")
-
     time.sleep(2 * HEALTH_CHECK_INTERVAL)
-
-    print("Waited for health check")
 
     response = check_status()
     assert response.status_code == 200
     status_data = json.loads(response.text)
     linters = status_data["linters"]
-
-    print("Got health check info")
 
     for linter in linters:
         linter_ip = list(linter.keys())[0]
@@ -405,33 +387,22 @@ def test_determine_new_version_and_load_balance():
         elif linter[linter_ip]["version"] == "2.0":
             assert linter[linter_ip]["request_count"] == 1
 
-    print("Checked request counts")
-
     # Finish the update
     response = update("python")
     assert response.status_code == 200
-    
-    print("Started finalizing update")
 
+    # A lot of timeout here, as many containers may need to be redeployed
     while response.status_code == 200:
         response = update("python", 30)
 
-    print(response.status_code)
-    print(response.text)
 
     assert response.status_code == 400
-
-    print("Finished updated")
 
     response = init_update("python", "1.0")
     assert response.status_code == 200
 
-    print("Init update done")
-
+    # A lot of timeout here, as many containers may need to be redeployed
     while response.status_code == 200:
-        response = update("python")
+        response = update("python", 30)
 
     assert response.status_code == 400
-
-    print("Finished updated")
-    print("Starting cleanup")
