@@ -78,7 +78,7 @@ def init_update():
     except RuntimeError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-    return '/init-update'
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route('/update', methods=['POST'])
