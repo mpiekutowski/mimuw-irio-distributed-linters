@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+  load-balancer:
+    image: ghcr.io/mpiekutowski/load_balancer
+    networks:
+      - linter_network
+    environment:
+      - SECRET_KEY=123
+
+  test-client:
+    container_name: test-client
+    image: ghcr.io/mpiekutowski/test_client
+    command: tail -f /dev/null
+    volumes:
+      - ./test_load_balancer.py:/tests/test_load_balancer.py
+    depends_on:
+      - load-balancer
+    networks:
+      - linter_network
+
+  java-linter-1: &java-linter
+    image: ghcr.io/mpiekutowski/linter:1.0
+    networks:
+      - linter_network
+    environment:
+      - LANGUAGE=java
+
+  java-linter-2:
+    <<: *java-linter
+    
+  java-linter-3: &java-linter-experimental
+    image: ghcr.io/mpiekutowski/linter:2.0
+    networks: 
+      - linter_network
+    environment:
+      - LANGUAGE=java
+        
+  java-linter-4:
+    <<: *java-linter-experimental
+    
+
+  python-linter-1: &python-linter
+    image: ghcr.io/mpiekutowski/linter:1.0
+    networks:
+      - linter_network
+    environment:
+      - LANGUAGE=python
+
+  python-linter-2:
+    <<: *python-linter
+    
+  python-linter-3: &python-linter-experimental
+    image: ghcr.io/mpiekutowski/linter:2.0
+    networks:
+      - linter_network
+    environment:
+      - LANGUAGE=python
+
+  python-linter-4:
+    <<: *python-linter-experimental
+
+networks:
+  linter_network:
