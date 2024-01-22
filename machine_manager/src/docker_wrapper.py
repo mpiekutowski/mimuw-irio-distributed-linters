@@ -22,7 +22,6 @@ class Container:
 class DockerWrapper:
     def __init__(self):
         self.client = docker.from_env()
-        # TODO: SHoudln't be hardcoded
         network_name = "linter_network"
 
         try:

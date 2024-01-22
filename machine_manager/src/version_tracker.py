@@ -76,8 +76,6 @@ class VersionTracker():
             return self._current_version
         
         # Check if adding current version would not require readjustment
-        # QUESTION: This is a bit of a hack, is there a better way to do this?
-        # Also, not thread safe
         self._count += 1
         self._current_version_count += 1
         readjustment = self._calculate_readjustment()
