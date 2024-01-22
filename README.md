@@ -2,7 +2,12 @@
 
 ## Pull linter images:
 
-`docker pull ghcr.io/mpiekutowski/linter:1.0 ghcr.io/mpiekutowski/linter:1.1 ghcr.io/mpiekutowski/linter:1.2 ghcr.io/mpiekutowski/linter:2.0`
+```
+docker pull ghcr.io/mpiekutowski/linter:1.0 
+docker pull ghcr.io/mpiekutowski/linter:1.1 
+docker pull ghcr.io/mpiekutowski/linter:1.2 
+docker pull ghcr.io/mpiekutowski/linter:2.0
+```
 
 ## Start the containers:
 
