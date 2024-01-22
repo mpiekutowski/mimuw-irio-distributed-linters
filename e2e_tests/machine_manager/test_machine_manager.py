@@ -296,28 +296,39 @@ def test_create_delete_roundtrip():
 
 # Roundtrip update/rollback: final status same as initial
 def test_update_rollback_roundtrip():
-    linters_number = 5
+    linters_number = 10
+    lang = 'java'
+    v1 = '1.0'
+    v2 = '2.0'
     for _ in range(linters_number):
-        response = MM_create('java')
+        response = MM_create(lang)
         assert response.status_code == 200, response.text
-    response = MM_init_update('java', '2.0')
+    response = MM_init_update(lang, v2)
     assert response.status_code == 200, response.text
 
     linters_array = get_linters_array_from_status()
-    v1_before = count_linters_version(linters_array, 'java', '1.0')
-    v2_before = count_linters_version(linters_array, 'java', '2.0')
+    v1_before = count_linters_version(linters_array, lang, v1)
+    v2_before = count_linters_version(linters_array, lang, v2)
 
     for _ in UPDATE_STEPS[:-2]:
-        response = MM_update('java', timeout=30)
+        response = MM_update(lang, timeout=30)
         assert response.status_code == 200, response.text
 
     for _ in UPDATE_STEPS[1:-1][::-1]:
-        response = MM_rollback('java', timeout=30)
+        response = MM_rollback(lang, timeout=30)
         assert response.status_code == 200, response.text
 
     linters_array = get_linters_array_from_status()
-    v1_after = count_linters_version(linters_array, 'java', '1.0')
-    v2_after = count_linters_version(linters_array, 'java', '2.0')
+    v1_after = count_linters_version(linters_array, lang, v1)
+    v2_after = count_linters_version(linters_array, lang, v2)
 
     assert v1_before == v1_after and v2_before == v2_after
+
+    response = MM_rollback(lang, timeout=30)
+    assert response.status_code == 200, response.text
+    linters_array = get_linters_array_from_status()
+    v1 = count_linters_version(linters_array, lang, v1)
+    v2 = count_linters_version(linters_array, lang, v2)
+    assert v1 == linters_number and v2 == 0
+    
         
