@@ -129,6 +129,7 @@ class VersionTracker():
 
         return self._calculate_readjustment()
 
+
     def move_to_next_step(self) -> Optional[Readjustment]:
         if not self._is_updating:
             raise ValueError('Cannot move to next step, not updating')
@@ -141,7 +142,6 @@ class VersionTracker():
         return self._calculate_readjustment()
 
 
-
     def move_to_previous_step(self) -> Optional[Readjustment]:
         if not self._is_updating:
             raise ValueError('Cannot move to previous step, not updating')
@@ -149,17 +149,18 @@ class VersionTracker():
         if self._update_step_index - 1 < 0:
             # Cancel update
             self._is_updating = False
-            
-            readjustment = self._next_version_count
-            self._next_version = None
-            self._update_step_index = None
-            self._next_version_count = None
 
+            readjustment = Readjustment(
+                from_version=self._next_version,
+                to_version=self._current_version,
+                count=self._next_version_count
+            )
             return readjustment
         
         self._update_step_index -= 1
 
         return self._calculate_readjustment()
+
 
     def finish_update(self):
         if not self._is_updating:
@@ -176,12 +177,18 @@ class VersionTracker():
         self._next_version_count = None
 
 
+    def cancel_update(self):
+        self._next_version = None
+        self._update_step_index = None
+        self._next_version_count = None
+
+
     def update_status(self) -> UpdateStatus:
         return UpdateStatus(
             is_updating=self._is_updating,
             current_version=self._current_version,
             next_version=self._next_version,
-            progress=self._update_steps[self._update_step_index] if self._is_updating else None
+            progress=self._update_steps[self._update_step_index] if self._is_updating else 0
         )
     
     
