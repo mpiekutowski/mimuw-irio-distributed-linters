@@ -22,7 +22,7 @@ class LoadBalancerClient():
     def add(self, lang, version, linter_ip):
         endpoint = '/add'
         body = {
-            'lang': lang,
+            'lang': lang.lower(),
             'version': version,
             'uri': f"http://{linter_ip}",
             'secretKey': self.secret_key

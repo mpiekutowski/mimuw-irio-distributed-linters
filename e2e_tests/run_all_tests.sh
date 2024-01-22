@@ -1,8 +1,8 @@
 #!/bin/sh
 
-TEST_DIRECTORIES="sanity_check load_balancer full"
+TEST_DIRECTORIES=("sanity_check" "machine_manager" "load_balancer" "full")
 
-for dir in $TEST_DIRECTORIES; do
+for dir in "${TEST_DIRECTORIES[@]}"; do
     if [ -d "$dir" ]; then
         printf "\033[1mCalling $dir/test.sh\033[0m\n"
         # Assuming test.sh is in each directory

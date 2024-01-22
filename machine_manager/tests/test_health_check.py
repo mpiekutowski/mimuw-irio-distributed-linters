@@ -1,28 +1,24 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from threading import Lock
 import time
 import json
 
 from health_check import HealthCheck, finish_health_check
-from load_balancer_client import LoadBalancerClient
 
 def mocked_load_balancer_remove(linter_ip):
-    with patch('requests.post') as mock_post:
-        mock_response = mock_post.return_value
-        mock_response.status_code = 200
-
-        return mock_response
+    mock_response = Mock()
+    mock_response.status_code = 200
 
 def health_check_init(health_check_info = {}, mutex = Lock()):
-    with patch.object(LoadBalancerClient, 'remove', side_effect=mocked_load_balancer_remove):
-        load_balancer = LoadBalancerClient("http://load_balancer_ip", "SOME_SECRET_KEY")
+    load_balancer = Mock()
+    load_balancer.remove.side_effect = mocked_load_balancer_remove
 
-        return HealthCheck(
-            health_check_info=health_check_info,
-            health_check_mutex=mutex,
-            load_balancer=load_balancer,
-            health_check_interval=0.5
-        )
+    return HealthCheck(
+        health_check_info=health_check_info,
+        health_check_mutex=mutex,
+        load_balancer=load_balancer,
+        health_check_interval=0.5
+    )
 
 class TestHealthCheckInit:
     def test_start_and_join_thread(self):

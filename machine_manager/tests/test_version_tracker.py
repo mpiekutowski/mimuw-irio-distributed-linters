@@ -374,7 +374,7 @@ class TestFinishUpdate:
 
         tracker.finish_update()
         assert tracker.update_status() == UpdateStatus(
-            is_updating=False, current_version="v2", next_version=None, progress=None
+            is_updating=False, current_version="v2", next_version=None, progress=0
         )
 
 
@@ -382,7 +382,7 @@ class TestUpdateStatus:
     def test_update_status_without_update(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
         assert tracker.update_status() == UpdateStatus(
-            is_updating=False, current_version="v1", next_version=None, progress=None
+            is_updating=False, current_version="v1", next_version=None, progress=0
         )
 
     def test_update_status_with_update(self):
