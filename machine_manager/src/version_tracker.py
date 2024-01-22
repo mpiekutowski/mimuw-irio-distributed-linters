@@ -139,7 +139,7 @@ class VersionTracker():
         self._update_step_index += 1
 
         return self._calculate_readjustment()
-        
+
 
 
     def move_to_previous_step(self) -> Optional[Readjustment]:
@@ -147,7 +147,15 @@ class VersionTracker():
             raise ValueError('Cannot move to previous step, not updating')
         
         if self._update_step_index - 1 < 0:
-            raise ValueError('Cannot move to previous step, already at first step')
+            # Cancel update
+            self._is_updating = False
+            
+            readjustment = self._next_version_count
+            self._next_version = None
+            self._update_step_index = None
+            self._next_version_count = None
+
+            return readjustment
         
         self._update_step_index -= 1
 

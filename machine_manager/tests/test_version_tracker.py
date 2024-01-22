@@ -304,8 +304,9 @@ class TestMoveToPreviousStep:
     def test_move_to_previous_step_on_first_step(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[50, 100])
         tracker.start_update("v2")
-        with pytest.raises(ValueError):
-            tracker.move_to_previous_step()
+        tracker.move_to_previous_step()
+
+        assert tracker.update_status().is_updating == False
 
     def test_move_to_previous_step_no_readjustment(self):
         tracker = VersionTracker(initial_version="v1", update_steps=[10, 50, 100])
