@@ -65,7 +65,6 @@
 | key       | type      | description                              |
 |:----------|:----------|:-----------------------------------------|
 | `status`  | `String`  | Result of operation, `ok` for successful deletion |
-| `message` | `String`  | Additional information about the deletion |
 
 ##### Response 400, JSON:
 
