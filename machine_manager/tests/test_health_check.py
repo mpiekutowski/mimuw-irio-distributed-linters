@@ -15,7 +15,7 @@ def mocked_load_balancer_remove(linter_ip):
 
 def health_check_init(health_check_info = {}, mutex = Lock()):
     with patch.object(LoadBalancerClient, 'remove', side_effect=mocked_load_balancer_remove):
-        load_balancer = LoadBalancerClient("http://load_balancer_ip")
+        load_balancer = LoadBalancerClient("http://load_balancer_ip", "SOME_SECRET_KEY")
 
         return HealthCheck(
             health_check_info=health_check_info,
