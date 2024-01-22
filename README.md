@@ -48,7 +48,7 @@
 
 | http code | description                           |
  |-----------|---------------------------------------|
-| `200`     | Ratio updated                         |
+| `200`     | Addition comleted                         |
 | `400`     | Language not supported or invalid URI |
 | `403`     | Auth failed                           |
 
@@ -66,14 +66,14 @@
 
 | key         | type     | description             |
  |-------------|----------|-------------------------|
-| `uri`       | `String` | URI of linter to delete |
+| `uri`       | `String` | URI of linter to remove |
 | `secretKey` | `String` | Key for authorization   |
 
 ##### Responses
 
 | http code | description    |
  |-----------|----------------|
-| `200`     | Linter removed |
+| `200`     | Removal copmpleted |
 | `400`     | Invalid URI    |
 | `403`     | Auth failed    |
 
@@ -90,7 +90,7 @@
 
 | key            | type     | description                                                                                           |
  |----------------|----------|-------------------------------------------------------------------------------------------------------|
-| `lang`         | `String` | lang of linters                                                                                       |
+| `lang`         | `String` | Lang of linters                                                                                       |
 | `versionRatio` | `Dict`   | {"v1": Int, "v2":Int, ...} Any number of keys as long as their values sum up to arbitrary total ratio |
 | `secretKey`    | `String` | Key for authorization                                                                                 |
 
@@ -130,7 +130,7 @@
 
 | key    | type     | description             |
  |--------|----------|-------------------------|
-| `code` | `String` | URI of linter to delete |
+| `code` | `String` | URI of linter to remove |
 
 ##### Response 200, JSON:
 
