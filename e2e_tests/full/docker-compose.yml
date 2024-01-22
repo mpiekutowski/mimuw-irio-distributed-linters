@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  machine-manager:
+    container_name: machine-manager
+    image: ghcr.io/mpiekutowski/machine_manager
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - linter_network
+    environment:
+      - SECRET_KEY=123
+
+  load-balancer:
+    container_name: load-balancer
+    image: ghcr.io/mpiekutowski/load_balancer
+    ports:
+      - "8080:8080"   
+    networks:
+      - linter_network
+    environment:
+      - SECRET_KEY=123
+
+  test-client:
+    container_name: test-client
+    image: ghcr.io/mpiekutowski/test_client
+    command: tail -f /dev/null
+    volumes:
+      - ./test_full.py:/tests/test_full.py
+      - /var/run/docker.sock:/var/run/docker.sock  # Mount this volume if you need access to host's docker daemon
+    depends_on:
+      - machine-manager
+    links:
+      - machine-manager
+    networks:
+      - linter_network
+      
+networks:
+  linter_network:
+    name: linter_network
+    driver: bridge
