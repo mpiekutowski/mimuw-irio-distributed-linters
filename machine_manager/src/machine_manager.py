@@ -225,6 +225,8 @@ class MachineManager:
 
         self._update_loadbalancing(lang)
 
+        if not self.version_trackers[lang].update_status().is_updating:
+            self.version_trackers[lang].cancel_update()
 
     def status(self):
         lintersArray = []
