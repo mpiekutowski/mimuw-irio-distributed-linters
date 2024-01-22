@@ -4,7 +4,7 @@ TEST_DIRECTORIES="sanity_check"
 
 for dir in $TEST_DIRECTORIES; do
     if [ -d "$dir" ]; then
-        printf "\033[1mCalling test.sh\033[0m\n"
+        printf "\033[1mCalling $dir/test.sh\033[0m\n"
         # Assuming test.sh is in each directory
         (cd "$dir" && ./test.sh)
         
