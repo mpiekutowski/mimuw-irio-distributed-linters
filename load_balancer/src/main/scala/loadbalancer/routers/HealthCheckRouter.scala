@@ -1,4 +1,4 @@
-package loadbalancer.http
+package loadbalancer.routers
 
 import cats.effect.IO
 import org.http4s.HttpRoutes
