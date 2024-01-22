@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TEST_DIRECTORIES="sanity_check"
+TEST_DIRECTORIES="sanity_check machine_manager"
 
 for dir in $TEST_DIRECTORIES; do
     if [ -d "$dir" ]; then
