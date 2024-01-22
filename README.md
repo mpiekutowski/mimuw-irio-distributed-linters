@@ -37,14 +37,20 @@
 
 ##### Body
 
-| key         | type     | description              |
- |-------------|----------|--------------------------|
-| `lang`      | `String` | lang of linter to add    |
-| `version`   | `String` | version of linter to add |
-| `uri`       | `String` | URI of linter to add     |
-| `secretKey` | `String` | Key for authorization    |
+| key         | type     | description               |
+ |-------------|----------|---------------------------|
+| `lang`      | `String` | Language of linter to add |
+| `version`   | `String` | Version of linter to add  |
+| `uri`       | `String` | URI of linter to add      |
+| `secretKey` | `String` | Key for authorization     |
 
-##### Response 200
+##### Responses
+
+| http code | description                           |
+ |-----------|---------------------------------------|
+| `200`     | Ratio updated                         |
+| `400`     | Language not supported or invalid URI |
+| `403`     | Auth failed                           |
 
 </details>
 
@@ -63,7 +69,13 @@
 | `uri`       | `String` | URI of linter to delete |
 | `secretKey` | `String` | Key for authorization   |
 
-##### Response 200
+##### Responses
+
+| http code | description    |
+ |-----------|----------------|
+| `200`     | Linter removed |
+| `400`     | Invalid URI    |
+| `403`     | Auth failed    |
 
 </details>
 
@@ -82,7 +94,13 @@
 | `versionRatio` | `Dict`   | {"v1": Int, "v2":Int, ...} Any number of keys as long as their values sum up to arbitrary total ratio |
 | `secretKey`    | `String` | Key for authorization                                                                                 |
 
-##### Response 200
+##### Responses
+
+| http code | description                                 |
+ |-----------|---------------------------------------------|
+| `200`     | Ratio updated                               |
+| `400`     | Wrong total ratio or language not supported |
+| `403`     | Auth failed                                 |
 
 </details>
 
