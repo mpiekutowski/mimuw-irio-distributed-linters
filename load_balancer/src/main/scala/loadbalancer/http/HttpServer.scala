@@ -3,7 +3,7 @@ package loadbalancer.http
 import cats.effect.IO
 import com.comcast.ip4s.{Host, Port}
 import loadbalancer.domain.{UrisRef, VersionRoundRobinRef}
-import loadbalancer.routers.{LoadBalancerRouter, RatioUpdaterRouter, UriManagerRouter}
+import loadbalancer.routers.{HealthCheckRouter, LoadBalancerRouter, RatioUpdaterRouter, UriManagerRouter}
 import org.http4s.HttpApp
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
